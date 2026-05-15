@@ -7,8 +7,8 @@
     "email": "support@tolibear.com",
     "url": "https://github.com/tolibear"
   },
-  "homepage": "https://github.com/tolibear/cicero-goals#readme",
-  "repository": "https://github.com/tolibear/cicero-goals",
+  "homepage": "https://github.com/amacdonald-cgs/goalbuddy#readme",
+  "repository": "https://github.com/amacdonald-cgs/goalbuddy",
   "license": "MIT",
   "keywords": [
     "cicero-goals",
@@ -33,9 +33,9 @@
       "Read",
       "Write"
     ],
-    "websiteURL": "https://github.com/tolibear/cicero-goals",
-    "privacyPolicyURL": "https://github.com/tolibear/cicero-goals#privacy",
-    "termsOfServiceURL": "https://github.com/tolibear/cicero-goals#license",
+    "websiteURL": "https://github.com/amacdonald-cgs/goalbuddy",
+    "privacyPolicyURL": "https://github.com/amacdonald-cgs/goalbuddy#privacy",
+    "termsOfServiceURL": "https://github.com/amacdonald-cgs/goalbuddy#license",
     "defaultPrompt": [
       "$goal-prep prepare a Cicero Goals board for this goal"
     ],

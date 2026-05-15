@@ -1,13 +1,13 @@
 # Contributing
 
-Thanks for improving `goalbuddy`.
+Thanks for improving `cicero-goals`.
 
 ## Local Setup
 
 Clone the repo and run the checks:
 
 ```bash
-git clone https://github.com/tolibear/goalbuddy.git
+git clone https://github.com/amacdonald-cgs/goalbuddy.git
 cd goalbuddy
 npm run check
 ```
@@ -35,7 +35,7 @@ The package should include `README.md`, `internal/assets/`, `package.json`, `int
 
 ## Releases
 
-GoalBuddy publishes from GitHub Actions with npm trusted publishing. See [RELEASE.md](RELEASE.md) before creating a release.
+Cicero Goals publishes from GitHub Actions with npm trusted publishing. See [RELEASE.md](RELEASE.md) before creating a release.
 
 ## Contribution Guidelines
 

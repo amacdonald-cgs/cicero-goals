@@ -2,7 +2,7 @@
 
 GitHub Pages is configured for:
 
-- Repository: `tolibear/goalbuddy`
+- Repository: `amacdonald-cgs/goalbuddy`
 - Pages build type: GitHub Actions workflow
 - Custom domain: `goalbuddy.dev`
 - Published artifact path: `internal/site`

@@ -1,16 +1,16 @@
 # Release
 
-GoalBuddy publishes the `goalbuddy` npm package from GitHub Actions using npm trusted publishing. This avoids long-lived npm write tokens and lets npm generate provenance for future releases.
+Cicero Goals publishes the `cicero-goals` npm package from GitHub Actions using npm trusted publishing. This avoids long-lived npm write tokens and lets npm generate provenance for future releases.
 
 ## One-Time npm Setup
 
-Configure this on npmjs.com for the `goalbuddy` package:
+Configure this on npmjs.com for the `cicero-goals` package:
 
 - Publisher: GitHub Actions
-- GitHub owner/user: `tolibear`
+- GitHub owner/user: `amacdonald-cgs`
 - Repository: `goalbuddy`
 - Workflow filename: `npm-publish.yml`
-- Package: `goalbuddy`
+- Package: `cicero-goals`
 
 The workflow path in this repo is:
 
@@ -21,8 +21,8 @@ The workflow path in this repo is:
 Or configure the same trust relationship from the npm CLI:
 
 ```bash
-npx --yes npm@11.13.0 trust github goalbuddy \
-  --repo tolibear/goalbuddy \
+npx --yes npm@11.13.0 trust github cicero-goals \
+  --repo amacdonald-cgs/goalbuddy \
   --file npm-publish.yml \
   --yes
 ```
@@ -48,27 +48,27 @@ node internal/cli/check-publish-version.mjs
 6. Verify npm:
 
 ```bash
-npm view goalbuddy name version dist-tags repository bin --json
-npx goalbuddy --help
-npx goalbuddy doctor
+npm view cicero-goals name version dist-tags repository bin --json
+npx cicero-goals --help
+npx cicero-goals doctor
 ```
 
 ## Provenance Expectations
 
 npm trusted publishing requires a GitHub-hosted runner, Node `22.14.0` or newer, npm `11.5.1` or newer, and `id-token: write` workflow permission. The release workflow uses Node 24 and grants the OIDC permission required by npm.
 
-When publishing through trusted publishing from this public repo to the public `goalbuddy` package, npm should generate provenance automatically. The workflow intentionally runs `npm publish` without `NODE_AUTH_TOKEN`; npm exchanges the GitHub OIDC identity for a short-lived publish credential.
+When publishing through trusted publishing from this public repo to the public `cicero-goals` package, npm should generate provenance automatically. The workflow intentionally runs `npm publish` without `NODE_AUTH_TOKEN`; npm exchanges the GitHub OIDC identity for a short-lived publish credential.
 
 ## Compatibility Package
 
 Do not unpublish `goal-maker`. During the 60-90 day compatibility window, `npx goal-maker` should continue to work and point users to:
 
 ```bash
-npx goalbuddy
+npx cicero-goals
 ```
 
 After the compatibility window:
 
 ```bash
-npm deprecate goal-maker "Renamed to goalbuddy. Use: npx goalbuddy"
+npm deprecate goal-maker "Renamed to cicero-goals. Use: npx cicero-goals"
 ```
