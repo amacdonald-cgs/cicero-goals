@@ -2,7 +2,7 @@
 
 GitHub Pages is configured for:
 
-- Repository: `amacdonald-cgs/goalbuddy`
+- Repository: `amacdonald-cgs/cicero-goals`
 - Pages build type: GitHub Actions workflow
 - Custom domain: `goalbuddy.dev`
 - Published artifact path: `internal/site`

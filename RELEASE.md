@@ -22,7 +22,7 @@ Or configure the same trust relationship from the npm CLI:
 
 ```bash
 npx --yes npm@11.13.0 trust github cicero-goals \
-  --repo amacdonald-cgs/goalbuddy \
+  --repo amacdonald-cgs/cicero-goals \
   --file npm-publish.yml \
   --yes
 ```

@@ -22,7 +22,7 @@ test("Cicero Goals plugin is exposed through a Codex marketplace manifest", () =
 test("Cicero Goals plugin metadata tracks the package release", () => {
   assert.equal(plugin.name, pkg.name);
   assert.equal(plugin.version, pkg.version);
-  assert.equal(plugin.repository, "https://github.com/amacdonald-cgs/goalbuddy");
+  assert.equal(plugin.repository, "https://github.com/amacdonald-cgs/cicero-goals");
   assert.equal(plugin.skills, "./skills/");
   assert.equal(plugin.interface.displayName, "Cicero Goals");
   assert.match(plugin.description, /Cicero Goals/i);

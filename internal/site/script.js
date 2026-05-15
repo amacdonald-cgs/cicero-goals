@@ -80,7 +80,7 @@ async function loadGithubStars() {
   if (!starCount) return;
 
   try {
-    const response = await fetch("https://api.github.com/repos/amacdonald-cgs/goalbuddy", {
+    const response = await fetch("https://api.github.com/repos/amacdonald-cgs/cicero-goals", {
       headers: { Accept: "application/vnd.github+json" },
     });
     if (!response.ok) throw new Error("GitHub API unavailable");

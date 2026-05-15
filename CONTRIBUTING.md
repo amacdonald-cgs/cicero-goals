@@ -7,7 +7,7 @@ Thanks for improving `cicero-goals`.
 Clone the repo and run the checks:
 
 ```bash
-git clone https://github.com/amacdonald-cgs/goalbuddy.git
+git clone https://github.com/amacdonald-cgs/cicero-goals.git
 cd goalbuddy
 npm run check
 ```

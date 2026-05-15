@@ -31,7 +31,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/amacdonald-cgs/goalbuddy.git"
+    "url": "git+https://github.com/amacdonald-cgs/cicero-goals.git"
   },
   "keywords": [
     "codex",
@@ -53,9 +53,9 @@
   "author": "tolibear",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/amacdonald-cgs/goalbuddy/issues"
+    "url": "https://github.com/amacdonald-cgs/cicero-goals/issues"
   },
-  "homepage": "https://github.com/amacdonald-cgs/goalbuddy#readme",
+  "homepage": "https://github.com/amacdonald-cgs/cicero-goals#readme",
   "engines": {
     "node": ">=18"
   },
