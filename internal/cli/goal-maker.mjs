@@ -60,17 +60,21 @@ const parallelCliName = "cicero-goals";
 const skillSource = join(packageRoot, canonicalSkillSourceDirectory);
 const packageInfo = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"));
 const defaultCodexHome = process.env.CODEX_HOME || join(homedir(), ".codex");
-const defaultCatalogUrl = "https://raw.githubusercontent.com/tolibear/cicero-goals/main/extend/catalog.json";
+const defaultCatalogUrl = "https://raw.githubusercontent.com/amacdonald-cgs/cicero-goals/main/extend/catalog.json";
 const requiredAgentFiles = [
   "goal_judge.toml",
   "goal_scout.toml",
   "goal_worker.toml",
 ];
+const bundledCoreExtensionIds = new Set(["github-projects", "local-goal-board"]);
 const optionsWithValues = new Set([
   "--catalog",
   "--catalog-url",
   "--codex-home",
+  "--goal",
+  "--host",
   "--kind",
+  "--port",
   "--source",
 ]);
 
@@ -127,6 +131,9 @@ async function main() {
     case "goal-runtime":
       goalRuntimeCommand();
       break;
+    case "board":
+      await board();
+      break;
     case "check-update":
     case "update-check":
       checkUpdate();
@@ -150,6 +157,7 @@ async function main() {
 }
 
 function invokedCommandName() {
+  if (process.env.CICERO_GOALS_INVOKED_AS) return process.env.CICERO_GOALS_INVOKED_AS;
   if (process.env.GOALBUDDY_INVOKED_AS) return process.env.GOALBUDDY_INVOKED_AS;
   return basename(process.argv[1] || "");
 }
@@ -218,6 +226,7 @@ Usage:
   ${cliName} use-inbox [--codex-home <path>] [--json]
   ${cliName} use-goal <goal-slug> [--codex-home <path>] [--json]
   ${cliName} goal-runtime attach [--codex-home <path>] [--json]
+  ${cliName} board <docs/goals/slug> [--catalog-url <url-or-path>] [--host <host>] [--port <port>] [--once] [--json]
   ${cliName} check-update [--json]
   ${cliName} extend [--catalog-url <url-or-path>] [--kind <kind>] [--json]
   ${cliName} extend <id> [--catalog-url <url-or-path>] [--json]
@@ -237,6 +246,7 @@ Compatibility:
 
 Environment:
   CODEX_HOME                         Overrides the default ~/.codex target.
+  CICERO_GOALS_EXTEND_CATALOG_URL    Overrides the default GitHub-hosted extension catalog.
   GOALBUDDY_EXTEND_CATALOG_URL       Overrides the default GitHub-hosted extension catalog.
   GOAL_MAKER_EXTEND_CATALOG_URL      Legacy fallback for the extension catalog.
 `);
@@ -256,7 +266,7 @@ function workContext(now = new Date().toISOString()) {
     owner: developerId(),
     repoRoot: cwd,
     worktreePath: cwd,
-    branch: process.env.GOALBUDDY_BRANCH || "unknown",
+    branch: process.env.CICERO_GOALS_BRANCH || process.env.GOALBUDDY_BRANCH || "unknown",
     now,
   };
 }
@@ -759,6 +769,38 @@ function checkUpdate() {
   }
 }
 
+async function board() {
+  const goal = optionValue("--goal") || positional(1);
+  if (!goal) {
+    console.error(`Missing goal directory. Usage: ${canonicalCliName} board docs/goals/<slug>`);
+    process.exit(2);
+  }
+
+  const script = await ensureLocalBoardExtension();
+  const scriptArgs = [script, "--goal", goal];
+  for (const option of ["--host", "--port"]) {
+    const value = optionValue(option);
+    if (value) scriptArgs.push(option, value);
+  }
+  if (hasFlag("--once")) scriptArgs.push("--once");
+  if (hasFlag("--json")) scriptArgs.push("--json");
+
+  const capture = hasFlag("--once") || hasFlag("--json");
+  const result = spawnSync(process.execPath, scriptArgs, {
+    cwd: packageRoot,
+    encoding: "utf8",
+    env: process.env,
+    stdio: capture ? ["ignore", "pipe", "pipe"] : "inherit",
+  });
+
+  if (capture) {
+    if (result.stdout) process.stdout.write(result.stdout);
+    if (result.stderr) process.stderr.write(result.stderr);
+  }
+  if (result.error) throw result.error;
+  process.exit(result.status ?? 1);
+}
+
 function updateReport() {
   const report = {
     package: packageInfo.name,
@@ -807,12 +849,12 @@ Usage:
   ${cliName} plugin install [--source <marketplace-source>] [--codex-home <path>] [--json]
 
 Default source:
-  tolibear/cicero-goals
+  amacdonald-cgs/cicero-goals
 `);
 }
 
 function installPlugin() {
-  const source = optionValue("--source") || "tolibear/cicero-goals";
+  const source = optionValue("--source") || "amacdonald-cgs/cicero-goals";
   const pluginSource = join(packageRoot, "plugins", pluginSourceDirectory);
   const pluginManifestPath = join(pluginSource, ".codex-plugin", "plugin.json");
   if (!existsSync(pluginManifestPath)) {
@@ -1031,7 +1073,7 @@ States:
 
 Catalog:
   Defaults to ${defaultCatalogUrl}
-  Override with --catalog-url, GOALBUDDY_EXTEND_CATALOG_URL, or legacy GOAL_MAKER_EXTEND_CATALOG_URL.
+  Override with --catalog-url, CICERO_GOALS_EXTEND_CATALOG_URL, GOALBUDDY_EXTEND_CATALOG_URL, or legacy GOAL_MAKER_EXTEND_CATALOG_URL.
 `);
 }
 
@@ -1171,6 +1213,11 @@ async function extendInstall() {
 async function extendInstallAll(catalog) {
   const results = [];
   for (const extension of catalog.extensions) {
+    if (existsSync(extensionTarget(extension.id)) && !hasFlag("--force")) {
+      validateCatalogExtension(extension);
+      results.push({ extension, target: extensionTarget(extension.id), plan: installPlan(catalog, extension, extensionTarget(extension.id)), skipped: true });
+      continue;
+    }
     results.push(await installCatalogExtension(catalog, extension));
   }
 
@@ -1198,11 +1245,13 @@ async function extendInstallAll(catalog) {
     printJson({
       installed: true,
       count: results.length,
-      extensions: results.map(({ extension, target }) => ({ id: extension.id, target })),
+      extensions: results.map(({ extension, target, skipped }) => ({ id: extension.id, target, skipped: Boolean(skipped) })),
     });
   } else {
-    console.log(`Installed ${results.length} extensions`);
-    for (const { extension, target } of results) console.log(`  ${extension.id} -> ${target}`);
+    const installedCount = results.filter((result) => !result.skipped).length;
+    const skippedCount = results.length - installedCount;
+    console.log(`Installed ${installedCount} extensions${skippedCount ? `, skipped ${skippedCount} already installed` : ""}`);
+    for (const { extension, target, skipped } of results) console.log(`  ${extension.id} -> ${target}${skipped ? " (already installed)" : ""}`);
   }
 }
 
@@ -1328,9 +1377,31 @@ function extensionTarget(id) {
   return join(extendRoot(), id);
 }
 
+async function ensureLocalBoardExtension() {
+  const id = "local-goal-board";
+  const script = join(extensionTarget(id), "scripts", "local-goal-board.mjs");
+  if (existsSync(script)) return script;
+
+  const bundledScript = join(skillSource, "extend", id, "scripts", "local-goal-board.mjs");
+  if (existsSync(bundledScript)) return bundledScript;
+
+  const catalog = await loadCatalog();
+  const extension = catalog.extensions.find((candidate) => candidate.id === id);
+  if (!extension) {
+    throw new Error(`Extension ${id} is not available in ${catalog.url}.`);
+  }
+
+  await installCatalogExtension(catalog, extension);
+  if (!existsSync(script)) {
+    throw new Error(`Extension ${id} installed, but script is missing: ${script}`);
+  }
+  return script;
+}
+
 function catalogUrl() {
   return optionValue("--catalog-url")
     || optionValue("--catalog")
+    || process.env.CICERO_GOALS_EXTEND_CATALOG_URL
     || process.env.GOALBUDDY_EXTEND_CATALOG_URL
     || process.env.GOAL_MAKER_EXTEND_CATALOG_URL
     || defaultCatalogUrl;
@@ -1456,13 +1527,14 @@ function listFiles(root, { exclude = new Set(), prefix = "" } = {}) {
 
 function preserveInstalledExtensions(targets) {
   const ids = [];
-  const tempPath = join(codexHome(), `.goalbuddy-preserved-extend-${process.pid}-${Date.now()}`);
+  const tempPath = join(codexHome(), `.cicero-goals-preserved-extend-${process.pid}-${Date.now()}`);
   let hasExtensions = false;
   for (const target of targets) {
     const source = join(target, "extend");
     if (!existsSync(source)) continue;
     mkdirSync(tempPath, { recursive: true });
     for (const entry of readdirSync(source, { withFileTypes: true })) {
+      if (bundledCoreExtensionIds.has(entry.name)) continue;
       const from = join(source, entry.name);
       const to = join(tempPath, entry.name);
       cpSync(from, to, { recursive: true, force: true });
@@ -1632,6 +1704,9 @@ function assertSkillInstalledForExtensionInstall() {
 }
 
 function latestPublishedVersion() {
+  if (process.env.CICERO_GOALS_TEST_NPM_LATEST_VERSION) {
+    return normalizeVersion(process.env.CICERO_GOALS_TEST_NPM_LATEST_VERSION);
+  }
   if (process.env.GOALBUDDY_TEST_NPM_LATEST_VERSION) {
     return normalizeVersion(process.env.GOALBUDDY_TEST_NPM_LATEST_VERSION);
   }
@@ -1677,6 +1752,7 @@ function installedExtensions() {
   if (!existsSync(root)) return [];
   return readdirSync(root, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
+    .filter((entry) => !bundledCoreExtensionIds.has(entry.name))
     .map((entry) => readInstalledExtension(join(root, entry.name)))
     .filter(Boolean);
 }

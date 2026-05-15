@@ -204,7 +204,7 @@ const legacySignals = [
 
 if (version !== 2) {
   if (legacySignals) {
-    errors.push("legacy v1 goal state detected; GoalBuddy v2 requires version: 2 with a task board. Create a new v2 goal or migrate manually.");
+    errors.push("legacy v1 goal state detected; Cicero Goals v2 requires version: 2 with a task board. Create a new v2 goal or migrate manually.");
   } else {
     errors.push("state.yaml must declare version: 2");
   }

@@ -1,8 +1,8 @@
 # Cicero Goals
 
 <p align="center">
-  <a href="https://goalbuddy.dev">
-    <img src="internal/assets/goalbuddy-readme-hero.png" alt="GoalBuddy turns vague Codex goals into structured progress with Scout, Judge, Worker, receipts, and verification." width="100%">
+  <a href="https://github.com/amacdonald-cgs/cicero-goals">
+    <img src="internal/assets/cicero-goals-readme-hero.png" alt="Cicero Goals turns vague Codex goals into structured progress with Scout, Judge, Worker, receipts, and verification." width="100%">
   </a>
 </p>
 
@@ -13,7 +13,7 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/cicero-goals"><img alt="npm" src="https://img.shields.io/npm/v/cicero-goals?style=flat-square&color=684cff"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-071236?style=flat-square"></a>
-  <a href="https://goalbuddy.dev"><img alt="goalbuddy.dev" src="https://img.shields.io/badge/site-goalbuddy.dev-684cff?style=flat-square"></a>
+  <a href="https://cicerogoals.dev"><img alt="cicerogoals.dev" src="https://img.shields.io/badge/site-cicerogoals.dev-684cff?style=flat-square"></a>
 </p>
 
 Cicero Goals is a local Codex companion for work that is too broad to trust to a single prompt. It turns a vague request into a `goal.md` charter, a machine-readable `state.yaml` board, role-tagged Scout/Judge/Worker tasks, compact receipts, and verification before completion.
@@ -30,7 +30,7 @@ Or install it globally:
 npm i -g cicero-goals
 ```
 
-Compatibility aliases remain available:
+Compatibility aliases remain available during the migration window:
 
 ```bash
 goalbuddy --help
@@ -43,7 +43,7 @@ Then restart Codex and invoke the installed skill:
 $goal-prep
 ```
 
-`$goal-prep` prepares the GoalBuddy-style deep board and prints the `/goal` command to run next. It does not start `/goal` automatically.
+`$goal-prep` prepares the Cicero Goals-style deep board and prints the `/goal` command to run next. It does not start `/goal` automatically.
 
 ## Why Cicero Goals Exists
 
@@ -73,7 +73,7 @@ In the current branch, `cicero-goals` state lives under:
   goals/
 ```
 
-The existing GoalBuddy board model still exists for deep orchestration, but not every tracked workstream needs the full Scout/Judge/Worker loop.
+The existing Cicero Goals board model still exists for deep orchestration, but not every tracked workstream needs the full Scout/Judge/Worker loop.
 
 ## What You Get Locally
 
@@ -166,7 +166,8 @@ npx cicero-goals check-update
 
 Use a non-default Codex home:
 
-cicero-goals current --bootstrap
+```bash
+cicero-goals current --bootstrap --codex-home /path/to/codex-home
 ```
 
 `plugin install`, `install`, `update`, and `doctor` also support `--json` when an agent or script needs structured output.
@@ -184,6 +185,14 @@ Check board health at any time:
 ```bash
 node ~/.codex/skills/cicero-goals/scripts/check-goal-state.mjs docs/goals/<slug>/state.yaml
 ```
+
+Open a live local board for that goal:
+
+```bash
+npx cicero-goals board docs/goals/<slug>
+```
+
+This writes `docs/goals/<slug>/.cicero-goals-board`, serves it on loopback, and streams `state.yaml` plus `notes/` changes to the browser without a manual reload.
 
 For a broad prompt like "Improve my project," the first active task should usually be Scout, not Worker:
 
@@ -220,12 +229,12 @@ The repo now also supports a repo-local `cicero-goals` substrate for tracked wor
 
 ```bash
 cicero-goals current --bootstrap
-cicero-goals begin "Rebrand GoalBuddy to cicero-goals"
+cicero-goals begin "Rebrand legacy surfaces to cicero-goals"
 cicero-goals pause
-cicero-goals resume rebrand-goalbuddy-to-cicero-goals
+cicero-goals resume rebrand-legacy-surfaces-to-cicero-goals
 cicero-goals end
 cicero-goals use-inbox
-cicero-goals use-goal rebrand-goalbuddy-to-cicero-goals
+cicero-goals use-goal rebrand-legacy-surfaces-to-cicero-goals
 cicero-goals goal-runtime attach
 ```
 
@@ -248,7 +257,7 @@ npx cicero-goals extend install --all
 Current catalog examples include:
 
 - `github-pr-workflow`: prepares receipt-aligned commit and PR handoff text.
-- `github-projects`: mirrors GoalBuddy boards into GitHub Projects.
+- `github-projects`: mirrors Cicero Goals boards into GitHub Projects.
 - `ai-diff-risk-review`: summarizes risk in the current diff.
 - `ci-failure-triage`: maps failing CI back to likely causes and next tasks.
 - `docs-drift-audit`: checks whether docs still match implementation.
@@ -290,7 +299,7 @@ Release automation for future npm publishes is documented in [RELEASE.md](RELEAS
 
 `0.2.x` is the v2 board and receipt model. It intentionally rejects old v1 `gate`, `units`, `artifacts`, and `evidence.jsonl` goal folders instead of auto-migrating them.
 
-Use GoalBuddy to structure autonomous Codex work. Keep relying on repo-specific `AGENTS.md`, tests, and CI for repo facts.
+Use Cicero Goals to structure autonomous Codex work. Keep relying on repo-specific `AGENTS.md`, tests, and CI for repo facts.
 
 ## License
 

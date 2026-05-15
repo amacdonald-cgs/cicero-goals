@@ -8,7 +8,7 @@ const cliPath = join(__dirname, "goal-maker.mjs");
 const globalInstall = process.env.npm_config_global === "true"
   || process.env.npm_config_location === "global";
 
-if (!globalInstall || process.env.GOALBUDDY_SKIP_POSTINSTALL) {
+if (!globalInstall || process.env.CICERO_GOALS_SKIP_POSTINSTALL || process.env.GOALBUDDY_SKIP_POSTINSTALL) {
   process.exit(0);
 }
 

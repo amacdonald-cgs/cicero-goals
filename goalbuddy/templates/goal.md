@@ -15,7 +15,7 @@
 - Authority: `requested | approved | inferred | needs_approval | blocked`
 - Proof type: `test | demo | artifact | metric | review | source_backed_answer | decision`
 - Completion proof: <observable signal that closes the full original outcome>
-- Likely misfire: <how GoalBuddy could succeed at the wrong thing>
+- Likely misfire: <how Cicero Goals could succeed at the wrong thing>
 - Blind spots considered: <risks, unstated choices, or success dimensions surfaced during diagnostic intake>
 - Existing plan facts: <user-provided steps/files/constraints/sequencing to preserve and validate, or none>
 
@@ -61,7 +61,7 @@ On every `/goal` continuation:
 
 1. Read this charter.
 2. Read `state.yaml`.
-3. Run the bundled GoalBuddy update checker when available and mention a newer version without blocking.
+3. Run the bundled Cicero Goals update checker when available and mention a newer version without blocking.
 4. Re-check the intake: original request, input shape, authority, proof, blind spots, existing plan facts, and likely misfire.
 5. Work only on the active board task.
 6. Assign Scout, Judge, Worker, or PM according to the task.

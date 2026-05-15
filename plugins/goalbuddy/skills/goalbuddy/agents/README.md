@@ -1,4 +1,4 @@
-# GoalBuddy Agents
+# Cicero Goals Agents
 
 This directory contains both skill metadata and bundled agent definitions.
 

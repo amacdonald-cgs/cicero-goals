@@ -1,13 +1,13 @@
-# goalbuddy.dev DNS
+# cicerogoals.dev DNS
 
 GitHub Pages is configured for:
 
 - Repository: `amacdonald-cgs/cicero-goals`
 - Pages build type: GitHub Actions workflow
-- Custom domain: `goalbuddy.dev`
+- Custom domain: `cicerogoals.dev`
 - Published artifact path: `internal/site`
 
-Cloudflare is authoritative for `goalbuddy.dev`:
+Cloudflare is authoritative for `cicerogoals.dev`:
 
 ```text
 serena.ns.cloudflare.com
@@ -32,16 +32,16 @@ Recommended `www` redirect support:
 
 ```text
 Type   Name  Content
-CNAME  www   tolibear.github.io
+CNAME  www   amacdonald-cgs.github.io
 ```
 
 After DNS resolves, re-check:
 
 ```bash
-dig goalbuddy.dev +noall +answer -t A
-dig goalbuddy.dev +noall +answer -t AAAA
-dig www.goalbuddy.dev +nostats +nocomments +nocmd
-curl -I https://goalbuddy.dev/
+dig cicerogoals.dev +noall +answer -t A
+dig cicerogoals.dev +noall +answer -t AAAA
+dig www.cicerogoals.dev +nostats +nocomments +nocmd
+curl -I https://cicerogoals.dev/
 ```
 
 Then enforce HTTPS in GitHub Pages once the certificate is issued.

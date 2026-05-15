@@ -1,8 +1,8 @@
 # Security Review Brief
 
-Prepare a local security review brief from changed files and GoalBuddy receipts.
+Prepare a local security review brief from changed files and Cicero Goals receipts.
 
-This extension is local-first. It helps a GoalBuddy run check security-sensitive surfaces such as auth, secrets, user input, file paths, network calls, dependencies, and public endpoints. It does not call a scanner or external security service by default.
+This extension is local-first. It helps a Cicero Goals run check security-sensitive surfaces such as auth, secrets, user input, file paths, network calls, dependencies, and public endpoints. It does not call a scanner or external security service by default.
 
 ## Use When
 

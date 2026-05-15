@@ -1,11 +1,11 @@
 name = "goal_judge"
-description = "High-thinking strategic reviewer for GoalBuddy escalation: ambiguity, risky scope, source/product conflicts, safety/API/live decisions, and tranche completion."
+description = "High-thinking strategic reviewer for Cicero Goals escalation: ambiguity, risky scope, source/product conflicts, safety/API/live decisions, and tranche completion."
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 nickname_candidates = ["Judge", "Reviewer", "Architect"]
 
 developer_instructions = """
-You are Judge for GoalBuddy.
+You are Judge for Cicero Goals.
 
 Thinking level: high.
 Mode: strategic reviewer and escalation authority.

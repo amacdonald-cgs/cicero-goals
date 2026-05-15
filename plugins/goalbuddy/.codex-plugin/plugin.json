@@ -1,7 +1,7 @@
 {
   "name": "cicero-goals",
   "version": "0.2.21",
-  "description": "Track Codex work with Cicero Goals workstreams, deep GoalBuddy orchestration, receipts, and verification.",
+  "description": "Track Codex work with Cicero Goals workstreams, deep Cicero Goals orchestration, receipts, and verification.",
   "author": {
     "name": "tolibear",
     "email": "support@tolibear.com",
@@ -24,8 +24,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Cicero Goals",
-    "shortDescription": "Track Codex work with Cicero Goals workstreams and deep GoalBuddy orchestration",
-    "longDescription": "Cicero Goals packages repo-local workstream tracking for Codex alongside the deeper GoalBuddy board workflow for broad, long-running, or ambiguous engineering work. It creates durable goal charters, task boards, receipts, verification gates, extension handoffs, and compatibility guidance for teams moving from GoalBuddy and goal-maker to cicero-goals.",
+    "shortDescription": "Track Codex work with Cicero Goals workstreams and deep Cicero Goals orchestration",
+    "longDescription": "Cicero Goals packages repo-local workstream tracking for Codex alongside the deeper Cicero Goals board workflow for broad, long-running, or ambiguous engineering work. It creates durable goal charters, task boards, receipts, verification gates, extension handoffs, and compatibility guidance for teams moving from Cicero Goals and goal-maker to cicero-goals.",
     "developerName": "tolibear",
     "category": "Coding",
     "capabilities": [

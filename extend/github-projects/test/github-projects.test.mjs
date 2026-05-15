@@ -17,7 +17,7 @@ import {
 } from "../scripts/lib/github-projects.mjs";
 
 describe("goal state parsing", () => {
-  it("normalizes a GoalBuddy v2 board", async () => {
+  it("normalizes a Cicero Goals v2 board", async () => {
     const text = await readFile(resolve("extend/github-projects/examples/goal-board-sync/state.yaml"), "utf8");
     const board = normalizeGoalBoard(parseGoalStateText(text));
 
@@ -26,7 +26,7 @@ describe("goal state parsing", () => {
     assert.equal(board.tasks.length, 3);
     assert.equal(board.tasks[0].title, "Map external board API requirements");
     assert.equal(board.tasks[1].priority, "P1");
-    assert.equal(board.tasks[0].receiptSummary, "The board sync can read GoalBuddy state.yaml and mirror tasks into an external board.");
+    assert.equal(board.tasks[0].receiptSummary, "The board sync can read Cicero Goals state.yaml and mirror tasks into an external board.");
     assert.equal(board.tasks[0].goalRole, "Scout");
     assert.equal(board.tasks[1].agentResponsible, "Worker");
     assert.equal(board.tasks[1].credentialGate, "Credentials");
@@ -242,14 +242,14 @@ describe("GitHub Projects mapping", () => {
     assert.equal(views.agentWorkboard, undefined);
   });
 
-  it("maps GoalBuddy task statuses to native GitHub board statuses", () => {
+  it("maps Cicero Goals task statuses to native GitHub board statuses", () => {
     assert.equal(projectStatusForTask("queued"), "Todo");
     assert.equal(projectStatusForTask("active"), "In Progress");
     assert.equal(projectStatusForTask("blocked"), "Blocked");
     assert.equal(projectStatusForTask("done"), "Done");
   });
 
-  it("maps GoalBuddy task types and priorities to lean PM fields", () => {
+  it("maps Cicero Goals task types and priorities to lean PM fields", () => {
     assert.equal(workTypeForTask("scout"), "Discovery");
     assert.equal(workTypeForTask("judge"), "Decision");
     assert.equal(workTypeForTask("worker"), "Execution");

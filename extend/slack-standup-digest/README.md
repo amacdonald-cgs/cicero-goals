@@ -1,8 +1,8 @@
 # Slack Standup Digest
 
-Prepare a Slack-ready status digest from GoalBuddy receipts.
+Prepare a Slack-ready status digest from Cicero Goals receipts.
 
-This extension is credential-gated for live Slack delivery but useful locally without credentials. It helps a GoalBuddy run summarize completed work, active blockers, verification status, and next steps in Slack-ready Markdown. It does not send a message by default.
+This extension is credential-gated for live Slack delivery but useful locally without credentials. It helps a Cicero Goals run summarize completed work, active blockers, verification status, and next steps in Slack-ready Markdown. It does not send a message by default.
 
 ## Use When
 

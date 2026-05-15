@@ -1,4 +1,4 @@
-# GoalBuddy Agents
+# Cicero Goals Agents
 
 Use three generic agents. The main `/goal` thread remains PM and owns the board.
 

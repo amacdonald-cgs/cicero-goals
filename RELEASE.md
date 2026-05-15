@@ -8,7 +8,7 @@ Configure this on npmjs.com for the `cicero-goals` package:
 
 - Publisher: GitHub Actions
 - GitHub owner/user: `amacdonald-cgs`
-- Repository: `goalbuddy`
+- Repository: `cicero-goals`
 - Workflow filename: `npm-publish.yml`
 - Package: `cicero-goals`
 

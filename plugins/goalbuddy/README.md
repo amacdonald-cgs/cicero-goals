@@ -6,7 +6,7 @@ Cicero Goals packages the canonical `$goal-prep` skill as a Codex plugin so team
 
 - `.codex-plugin/plugin.json`: plugin metadata and Codex UI copy.
 - `skills/goalbuddy/`: the tracked skill payload copied into the plugin.
-- `assets/goalbuddy-icon.svg`: lightweight plugin icon.
+- `assets/cicero-goals-icon.svg`: lightweight plugin icon.
 
 The tracked repo path remains `plugins/goalbuddy/`, but the published package and plugin identity are now `cicero-goals`.
 
@@ -54,4 +54,4 @@ node internal/cli/goal-maker.mjs doctor
 
 ## Release Notes
 
-The plugin is prepared for the `tolibear/cicero-goals` package identity while the tracked repo path remains `plugins/goalbuddy/`. Keep `.codex-plugin/plugin.json` aligned with `package.json` before publishing a new package release.
+The plugin is prepared for the `amacdonald-cgs/cicero-goals` package identity while the tracked repo path remains `plugins/goalbuddy/`. Keep `.codex-plugin/plugin.json` aligned with `package.json` before publishing a new package release.

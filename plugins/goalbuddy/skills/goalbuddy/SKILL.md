@@ -1,13 +1,13 @@
 ---
 name: goal-prep
-description: Goal Prep for GoalBuddy. Use for broad, long-running, stalled, vague, detailed, planned, or unhealthy Codex work that needs a structured /goal intake, autonomous task discovery, role-tagged Scout/Judge/Worker delegation, one active task, durable receipts, and a PM-owned rolling board that maximizes the chance of a successful goal run.
+description: Goal Prep for Cicero Goals. Use for broad, long-running, stalled, vague, detailed, planned, or unhealthy Codex work that needs a structured /goal intake, autonomous task discovery, role-tagged Scout/Judge/Worker delegation, one active task, durable receipts, and a PM-owned rolling board that maximizes the chance of a successful goal run.
 ---
 
 # Goal Prep
 
-`$goal-prep` prepares a GoalBuddy board. It does not start `/goal` automatically, but the board and starter `/goal` command must be shaped so the next run continues into safe execution by default.
+`$goal-prep` prepares a Cicero Goals board. It does not start `/goal` automatically, but the board and starter `/goal` command must be shaped so the next run continues into safe execution by default.
 
-GoalBuddy is for autonomous, long-running Codex work where the PM thread may need to discover the work, define tasks, sequence them, delegate them, execute them, verify them, and keep going without the human decomposing every step.
+Cicero Goals is for autonomous, long-running Codex work where the PM thread may need to discover the work, define tasks, sequence them, delegate them, execute them, verify them, and keep going without the human decomposing every step.
 
 The loop is:
 
@@ -28,11 +28,11 @@ During a `$goal-prep` turn, do not perform the user's requested work, even if th
 
 Allowed `$goal-prep` actions:
 
-- run the bundled GoalBuddy update checker and mention a newer version if one is available;
+- run the bundled Cicero Goals update checker and mention a newer version if one is available;
 - ask diagnostic intake questions and wait when required;
 - create or repair only `docs/goals/<slug>/goal.md`, `docs/goals/<slug>/state.yaml`, and `docs/goals/<slug>/notes/`;
-- optionally run the GoalBuddy board checker against that `state.yaml`;
-- verify that the GoalBuddy agents are installed, if this can be done without touching implementation work;
+- optionally run the Cicero Goals board checker against that `state.yaml`;
+- verify that the Cicero Goals agents are installed, if this can be done without touching implementation work;
 - print exactly `/goal Follow docs/goals/<slug>/goal.md.`;
 - ask whether to start `/goal`, refine the board, or stop.
 
@@ -40,7 +40,7 @@ If the prompt names another skill or tool, such as "use the taste skill", "refre
 
 ## Update Check
 
-At the start of a `$goal-prep` turn, check whether GoalBuddy itself is stale. Run the bundled checker from the installed skill directory when available:
+At the start of a `$goal-prep` turn, check whether Cicero Goals itself is stale. Run the bundled checker from the installed skill directory when available:
 
 ```bash
 node <skill-path>/scripts/check-update.mjs --json
@@ -49,7 +49,7 @@ node <skill-path>/scripts/check-update.mjs --json
 If the checker reports `update_available: true`, tell the user once before continuing:
 
 ```text
-GoalBuddy <latest_version> is available. After this turn, update with: npx goalbuddy
+Cicero Goals <latest_version> is available. After this turn, update with: npx cicero-goals
 ```
 
 Do not block intake or board creation on update checking. If the checker is missing, cannot find npm, or network access fails, continue silently unless the user asked about updates.
@@ -71,6 +71,22 @@ Extract:
 - likely misfire: how `/goal` could succeed at the wrong thing;
 - blind spots: important risks, choices, or success dimensions the user may not have named yet;
 - existing plan facts: user-provided steps, files, constraints, or sequencing that must be preserved but still validated.
+
+Ask the visual-board question early, before detailed task shaping:
+
+```text
+Do you want to set up a visual board for this?
+```
+
+Recommended options:
+
+1. Local live board (Recommended) - starts immediately, requires no credentials, and lets the user watch tasks populate inside Codex or Claude Code.
+2. GitHub Projects - best when stakeholders need a shared external board and the user can approve GitHub credentials/project details.
+3. No visual board - best for quick or private goals where the file board is enough.
+
+If the user chooses the local live board, create the goal directory, `notes/`, and an initial minimal `state.yaml` as soon as the slug is known, then run `npx cicero-goals board docs/goals/<slug>` and open the printed local URL in the AI coding agent's in-app browser (the Codex in-app Browser, the Claude Code preview, or the user's regular browser). The default local hub is `http://cicero-goals.localhost:41737/`, and board URLs normally look like `http://cicero-goals.localhost:41737/<slug>/`. In short: start the local board before filling the task list so the board pops up right away and cards populate live as `state.yaml` changes. Include the printed board URL in the final prep response as an actual clickable Markdown link, for example `[Open Cicero Goals board](http://cicero-goals.localhost:41737/<slug>/)`. Do not put the board URL only in a code block, quote, HTML comment, or prose that the UI cannot click.
+
+If the user chooses GitHub Projects, ask for approval and the required project target before any live write. Create or sync the GitHub Project at the same early point as the local board: after the goal root and skeleton `state.yaml` exist, before the detailed task list is finished, then sync again as tasks populate. Run a dry-run sync first when possible. Missing GitHub credentials or project details should not block local board creation or goal prep; record the missing requirement in `visual_board.github_projects` and seed a PM setup task.
 
 Ask before board creation when the request is vague, strategic, improvement-oriented, or open-ended and the user has not explicitly said to use defaults. Ask one guided question at a time with 2-3 options and a recommended default, then wait. Continue the diagnostic intake until the user's answers are sufficient to choose the board shape. Do not create or repair `docs/goals/<slug>/` until the diagnostic intake is complete or the user explicitly accepts defaults.
 
@@ -124,7 +140,7 @@ Minimum diagnostic ladder for vague, strategic, or improvement-oriented goals:
 
 Ask these one at a time. Skip a step only when the user's words already answer it clearly. After the user answers one step, do not assume the remaining steps; ask the next unresolved material question.
 
-For "make GoalBuddy better", a good first question is which improvement target matters most: intake clarity, board/execution reliability, completion proof/eval coverage, or user experience during long-running goals. A good second question asks what proof would convince the user it improved. A good third question asks whether to reuse an existing board, create a fresh board, or inspect first.
+For "make Cicero Goals better", a good first question is which improvement target matters most: intake clarity, board/execution reliability, completion proof/eval coverage, or user experience during long-running goals. A good second question asks what proof would convince the user it improved. A good third question asks whether to reuse an existing board, create a fresh board, or inspect first.
 
 ## Direct `/goal` Entry
 
@@ -148,7 +164,7 @@ When invoked directly, run intake first. For vague, strategic, improvement-orien
 
 Do:
 
-- check for a newer GoalBuddy version once at the start and mention it without blocking;
+- check for a newer Cicero Goals version once at the start and mention it without blocking;
 - clarify or infer the goal title and slug;
 - run the Intake Compiler;
 - ask diagnostic intake questions when clarity would materially improve the board;
@@ -197,7 +213,7 @@ Missing owner input, credentials, production access, destructive-operation permi
 
 Use this skill for goals that are broad, multi-hour, ambiguous, high-risk, already planned, already stale, already red, or likely to need Scout/Judge/Worker delegation.
 
-For a one-change task, do not create a GoalBuddy board.
+For a one-change task, do not create a Cicero Goals board.
 
 Scout and Judge tasks may identify optional extension, plugin, publishing, reporting, or channel opportunities as improvement candidates. Treat those as normal board tasks. Extensions are supporting surfaces; `state.yaml` remains board truth.
 
@@ -439,7 +455,7 @@ I found [problem or suggestion].
 Should I:
 1. Create an issue in this repo for it? (Recommended) - [why]
 2. Prepare a PR for the fix/suggestion - [when this is better]
-3. Keep it only in the GoalBuddy board for now - [tradeoff]
+3. Keep it only in the Cicero Goals board for now - [tradeoff]
 ```
 
 Use an issue for follow-up work, unclear scope, missing approval, or suggestions that need discussion. Use a PR when the fix is already implemented or safely implementable within the current approved scope. If neither is appropriate, propose a different path and record the decision in `state.yaml`.

@@ -1,7 +1,7 @@
 {
   "name": "cicero-goals",
   "version": "0.2.21",
-  "description": "Turn open-ended Codex goals into Cicero Goals workstreams, GoalBuddy boards, receipts, verification, and optional extensions.",
+  "description": "Turn open-ended Codex goals into Cicero Goals workstreams, deep boards, receipts, verification, and optional extensions.",
   "type": "module",
   "bin": {
     "cicero-goals": "internal/cli/goal-maker.mjs",
@@ -18,12 +18,13 @@
     "internal/cli",
     "goalbuddy/SKILL.md",
     "goalbuddy/agents",
+    "goalbuddy/extend",
     "goalbuddy/scripts",
     "goalbuddy/templates"
   ],
   "scripts": {
-    "check": "node --check internal/cli/*.mjs goalbuddy/scripts/*.mjs && node --test internal/test/*.test.mjs",
-    "test": "node --test internal/test/*.test.mjs",
+    "check": "node --check internal/cli/*.mjs goalbuddy/scripts/*.mjs extend/local-goal-board/scripts/*.mjs extend/local-goal-board/scripts/lib/*.mjs && node --test internal/test/*.test.mjs extend/local-goal-board/test/*.test.mjs",
+    "test": "node --test internal/test/*.test.mjs extend/local-goal-board/test/*.test.mjs",
     "pack:dry-run": "npm pack --dry-run",
     "postinstall": "node internal/cli/postinstall.mjs",
     "publish:check": "node internal/cli/check-publish-version.mjs && npm run pack:dry-run",

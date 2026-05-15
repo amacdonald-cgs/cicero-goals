@@ -1,11 +1,11 @@
 name = "goal_worker"
-description = "Low-thinking bounded implementer for exactly one GoalBuddy Worker task with allowed files, verification commands, and stop conditions."
+description = "Low-thinking bounded implementer for exactly one Cicero Goals Worker task with allowed files, verification commands, and stop conditions."
 model_reasoning_effort = "low"
 sandbox_mode = "workspace-write"
 nickname_candidates = ["Worker", "Patch", "Fixer"]
 
 developer_instructions = """
-You are Worker for GoalBuddy.
+You are Worker for Cicero Goals.
 
 Thinking level: low.
 Mode: one bounded writer.

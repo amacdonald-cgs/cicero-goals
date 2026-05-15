@@ -1,15 +1,15 @@
 # GitHub Projects
 
-Mirror a GoalBuddy `state.yaml` board into GitHub Projects without making GitHub the source of truth.
+Mirror a Cicero Goals `state.yaml` board into GitHub Projects without making GitHub the source of truth.
 
-This extension ports the GitHub Projects work from PR #1 into the catalog-based extension system. It keeps the package core dependency-free and optional, while giving teams a practical way to publish a GoalBuddy board into a familiar project surface.
+This extension ports the GitHub Projects work from PR #1 into the catalog-based extension system. It keeps the package core dependency-free and optional, while giving teams a practical way to publish a Cicero Goals board into a familiar project surface.
 
 ## Use When
 
-- A long-running GoalBuddy board needs stakeholder visibility in GitHub Projects.
+- A long-running Cicero Goals board needs stakeholder visibility in GitHub Projects.
 - A team wants one-way sync from `state.yaml` into ProjectV2 draft issues.
 - The PM needs a dry-run plan before using GitHub credentials.
-- Existing GoalBuddy receipts, verification commands, allowed files, owners, and dependencies should be visible in a board layout.
+- Existing Cicero Goals receipts, verification commands, allowed files, owners, and dependencies should be visible in a board layout.
 
 ## What It Creates
 
@@ -97,7 +97,7 @@ node extend/github-projects/scripts/sync-github-project.mjs \
 ## Boundaries
 
 - `state.yaml` remains authoritative.
-- The sync is one-way from GoalBuddy to GitHub Projects.
+- The sync is one-way from Cicero Goals to GitHub Projects.
 - Missing GitHub credentials block only live sync, not local dry-run validation.
 - Live sync creates or updates GitHub Project draft issues, fields, and the `Goal Board` view through the bundled script.
 - Agents must not fall back to Computer Use, browser automation, or the GitHub web UI for Project setup.

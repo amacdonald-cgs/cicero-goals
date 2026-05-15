@@ -49,7 +49,7 @@ function fakeCodexBin(root, { loggedIn = true, goalsEnabled = true } = {}) {
       "if \"%~1\"==\"features\" if \"%~2\"==\"list\" (",
       `  echo goals                               under development  ${goalsEnabled ? "true" : "false"}& exit /b 0`,
       ")",
-      "if \"%~1\"==\"plugin\" if \"%~2\"==\"marketplace\" if \"%~3\"==\"add\" echo Added marketplace goalbuddy& exit /b 0",
+      "if \"%~1\"==\"plugin\" if \"%~2\"==\"marketplace\" if \"%~3\"==\"add\" echo Added marketplace cicero-goals& exit /b 0",
       "exit /b 2",
       "",
     ].join("\r\n");
@@ -65,7 +65,7 @@ function fakeCodexBin(root, { loggedIn = true, goalsEnabled = true } = {}) {
       `  echo "goals                               under development  ${goalsEnabled ? "true" : "false"}"; exit 0`,
       "fi",
       "if [ \"$1\" = \"plugin\" ] && [ \"$2\" = \"marketplace\" ] && [ \"$3\" = \"add\" ]; then",
-      "  echo \"Added marketplace goalbuddy\"; exit 0",
+      "  echo \"Added marketplace cicero-goals\"; exit 0",
       "fi",
       "exit 2",
       "",
@@ -199,13 +199,13 @@ test("begin creates an explicit goal and makes it current", () => {
   try {
     const result = runGoalMaker([
       "begin",
-      "Rebrand GoalBuddy to cicero-goals",
+      "Rebrand legacy surfaces to cicero-goals",
       "--codex-home",
       codexHome,
     ]);
     assert.equal(result.status, 0, result.stderr || result.stdout);
 
-    const slug = "rebrand-goalbuddy-to-cicero-goals";
+    const slug = "rebrand-legacy-surfaces-to-cicero-goals";
     assert.equal(existsSync(join(goalRoot(codexHome, slug), "goal.md")), true);
     assert.equal(existsSync(join(goalRoot(codexHome, slug), "state.yaml")), true);
 
@@ -213,15 +213,15 @@ test("begin creates an explicit goal and makes it current", () => {
     assert.match(state, /kind:\s*goal/);
     assert.match(state, /mode:\s*structured/);
     assert.match(state, /status:\s*active/);
-    assert.match(state, /slug:\s*"rebrand-goalbuddy-to-cicero-goals"|slug:\s*rebrand-goalbuddy-to-cicero-goals/);
+    assert.match(state, /slug:\s*"rebrand-legacy-surfaces-to-cicero-goals"|slug:\s*rebrand-legacy-surfaces-to-cicero-goals/);
 
     const current = readFileSync(currentPath(codexHome), "utf8");
-    assert.match(current, /active_ref:\s*goals\/rebrand-goalbuddy-to-cicero-goals/);
+    assert.match(current, /active_ref:\s*goals\/rebrand-legacy-surfaces-to-cicero-goals/);
     assert.match(current, /active_kind:\s*goal/);
     assert.match(current, /active_mode:\s*structured/);
 
     const index = readFileSync(indexPath(codexHome), "utf8");
-    assert.match(index, /ref:\s*goals\/rebrand-goalbuddy-to-cicero-goals/);
+    assert.match(index, /ref:\s*goals\/rebrand-legacy-surfaces-to-cicero-goals/);
     assert.match(index, /mode:\s*structured/);
   } finally {
     rmSync(codexHome, { recursive: true, force: true });
@@ -317,7 +317,7 @@ test("goal-runtime attach upgrades the current explicit goal to deep mode", () =
   try {
     assert.equal(runGoalMaker([
       "begin",
-      "Rebrand GoalBuddy to cicero-goals",
+      "Rebrand legacy surfaces to cicero-goals",
       "--codex-home",
       codexHome,
     ]).status, 0);
@@ -325,11 +325,11 @@ test("goal-runtime attach upgrades the current explicit goal to deep mode", () =
     const attach = runGoalMaker(["goal-runtime", "attach", "--codex-home", codexHome]);
     assert.equal(attach.status, 0, attach.stderr || attach.stdout);
 
-    const state = readFileSync(join(goalRoot(codexHome, "rebrand-goalbuddy-to-cicero-goals"), "state.yaml"), "utf8");
+    const state = readFileSync(join(goalRoot(codexHome, "rebrand-legacy-surfaces-to-cicero-goals"), "state.yaml"), "utf8");
     assert.match(state, /mode:\s*deep/);
     assert.match(state, /goal_runtime:/);
     assert.match(state, /attached:\s*true/);
-    assert.match(state, /command:\s*"\/goal Follow \.codex\/cicero-goals\/developers\/local\/goals\/rebrand-goalbuddy-to-cicero-goals\/goal\.md\."|command:\s*\/goal Follow/);
+    assert.match(state, /command:\s*"\/goal Follow \.codex\/cicero-goals\/developers\/local\/goals\/rebrand-legacy-surfaces-to-cicero-goals\/goal\.md\."|command:\s*\/goal Follow/);
 
     const current = readFileSync(currentPath(codexHome), "utf8");
     assert.match(current, /active_mode:\s*deep/);
@@ -346,6 +346,27 @@ test("goal-runtime attach rejects inbox as the current workstream", () => {
     const attach = runGoalMaker(["goal-runtime", "attach", "--codex-home", codexHome]);
     assert.equal(attach.status, 1, attach.stderr || attach.stdout);
     assert.match(attach.stderr, /Cannot attach \/goal runtime to inbox/);
+  } finally {
+    rmSync(codexHome, { recursive: true, force: true });
+  }
+});
+
+test("board generates a live local board app for a goal directory", () => {
+  const codexHome = mkdtempSync(join(tmpdir(), "goal-maker-cli-test-"));
+  try {
+    const install = runGoalMaker(["install", "--codex-home", codexHome]);
+    assert.equal(install.status, 0, install.stderr || install.stdout);
+
+    const board = runGoalMaker([
+      "board",
+      resolve("extend/local-goal-board/examples/sample-goal"),
+      "--codex-home",
+      codexHome,
+      "--once",
+    ]);
+    assert.equal(board.status, 0, board.stderr || board.stdout);
+    assert.match(board.stdout, /Generated Cicero Goals board app at/);
+    assert.equal(existsSync(join(resolve("extend/local-goal-board/examples/sample-goal"), ".cicero-goals-board", "index.html")), true);
   } finally {
     rmSync(codexHome, { recursive: true, force: true });
   }
@@ -484,6 +505,7 @@ test("doctor reports native goal runtime readiness and supports strict goal-read
 test("check-update reports newer published Cicero Goals versions", () => {
   const env = {
     ...process.env,
+    CICERO_GOALS_TEST_NPM_LATEST_VERSION: "99.0.0",
     GOALBUDDY_TEST_NPM_LATEST_VERSION: "99.0.0",
   };
 
@@ -518,6 +540,7 @@ test("plugin install adds marketplace, caches plugin, and enables config", () =>
     assert.equal(report.installed, true);
     assert.equal(report.plugin, "cicero-goals@cicero-goals");
     assert.equal(report.version, packageVersion);
+    assert.equal(report.marketplace_source, "amacdonald-cgs/cicero-goals");
     assert.match(report.cache_path, pathSuffixPattern("plugins", "cache", "cicero-goals", "cicero-goals", packageVersion));
     assert.match(report.config_path, /config\.toml$/);
 
@@ -740,6 +763,7 @@ test("legacy goal-maker invocation prints rebrand notice only for human output",
     const codexHome = join(root, "codex-home");
     const env = {
       ...process.env,
+      CICERO_GOALS_INVOKED_AS: "goal-maker",
       GOALBUDDY_INVOKED_AS: "goal-maker",
     };
 
@@ -763,6 +787,7 @@ test("legacy goal-maker invocation prints rebrand notice only for human output",
 test("cicero-goals invocation uses alias-aware help output without rebrand notice", () => {
   const env = {
     ...process.env,
+    CICERO_GOALS_INVOKED_AS: "cicero-goals",
     GOALBUDDY_INVOKED_AS: "cicero-goals",
   };
 

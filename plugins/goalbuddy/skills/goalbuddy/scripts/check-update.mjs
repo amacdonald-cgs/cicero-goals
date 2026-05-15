@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const packageName = "goalbuddy";
+const packageName = "cicero-goals";
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 
@@ -14,7 +14,7 @@ const report = {
   latest_version: null,
   update_available: false,
   check_status: "unknown",
-  update_command: "npx goalbuddy",
+  update_command: "npx cicero-goals",
 };
 
 try {
@@ -29,16 +29,17 @@ try {
 if (args.includes("--json")) {
   console.log(JSON.stringify(report, null, 2));
 } else if (report.check_status !== "ok") {
-  console.log(`GoalBuddy update check unavailable: ${report.error}`);
+  console.log(`Cicero Goals update check unavailable: ${report.error}`);
 } else if (report.update_available) {
-  console.log(`GoalBuddy ${report.latest_version} is available; installed version is ${report.current_version}.`);
+  console.log(`Cicero Goals ${report.latest_version} is available; installed version is ${report.current_version}.`);
   console.log(`Update with: ${report.update_command}`);
 } else {
-  console.log(`GoalBuddy is up to date (${report.current_version}).`);
+  console.log(`Cicero Goals is up to date (${report.current_version}).`);
 }
 
 function findCurrentVersion() {
   const candidates = [
+    join(scriptDir, "..", ".cicero-goals-install.json"),
     join(scriptDir, "..", ".goalbuddy-install.json"),
     join(scriptDir, "..", "..", "..", ".codex-plugin", "plugin.json"),
     join(scriptDir, "..", "..", "package.json"),
@@ -54,6 +55,9 @@ function findCurrentVersion() {
 }
 
 function latestPublishedVersion() {
+  if (process.env.CICERO_GOALS_TEST_NPM_LATEST_VERSION) {
+    return normalizeVersion(process.env.CICERO_GOALS_TEST_NPM_LATEST_VERSION);
+  }
   if (process.env.GOALBUDDY_TEST_NPM_LATEST_VERSION) {
     return normalizeVersion(process.env.GOALBUDDY_TEST_NPM_LATEST_VERSION);
   }

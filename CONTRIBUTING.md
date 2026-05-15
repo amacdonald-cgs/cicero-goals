@@ -8,7 +8,7 @@ Clone the repo and run the checks:
 
 ```bash
 git clone https://github.com/amacdonald-cgs/cicero-goals.git
-cd goalbuddy
+cd cicero-goals
 npm run check
 ```
 

@@ -57,10 +57,10 @@ const PRIORITY_OPTIONS = [
 ];
 
 const AGENT_LANE_OPTIONS = [
-  { name: "PM", color: "GREEN", description: "GoalBuddy PM coordination work." },
-  { name: "Scout", color: "BLUE", description: "GoalBuddy evidence mapping work." },
-  { name: "Judge", color: "PURPLE", description: "GoalBuddy decision and audit work." },
-  { name: "Worker", color: "ORANGE", description: "GoalBuddy bounded implementation work." },
+  { name: "PM", color: "GREEN", description: "Cicero Goals PM coordination work." },
+  { name: "Scout", color: "BLUE", description: "Cicero Goals evidence mapping work." },
+  { name: "Judge", color: "PURPLE", description: "Cicero Goals decision and audit work." },
+  { name: "Worker", color: "ORANGE", description: "Cicero Goals bounded implementation work." },
   { name: "User", color: "GRAY", description: "Owner-gated or human action work." },
 ];
 
@@ -396,7 +396,7 @@ export function buildDraftIssueBody(task, board) {
   const lines = [
     `Mirrors ${board.sourcePath}.`,
     "",
-    "YAML remains the source of truth. Edit the GoalBuddy board, then rerun the sync.",
+    "YAML remains the source of truth. Edit the Cicero Goals board, then rerun the sync.",
     "",
     `Task ID: ${task.id}`,
     `Status: ${task.status}`,

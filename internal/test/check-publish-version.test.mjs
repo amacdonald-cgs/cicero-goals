@@ -15,6 +15,7 @@ function runCheck(publishedVersions) {
     encoding: "utf8",
     env: {
       ...process.env,
+      CICERO_GOALS_PUBLISHED_VERSIONS: publishedVersions,
       GOALBUDDY_PUBLISHED_VERSIONS: publishedVersions,
       GOAL_MAKER_PUBLISHED_VERSIONS: "",
     },

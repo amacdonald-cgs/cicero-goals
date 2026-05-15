@@ -6,8 +6,8 @@
       "name": "GitHub PR workflow",
       "kind": "integration",
       "version": "0.1.0",
-      "summary": "Prepare receipt-aligned commit boundaries and GitHub pull request handoff text from GoalBuddy receipts without requiring GitHub credentials.",
-      "description": "A local-first workflow for turning a GoalBuddy board, receipts, changed files, verification output, and commit boundaries into PR-ready Markdown while keeping state.yaml authoritative.",
+      "summary": "Prepare receipt-aligned commit boundaries and GitHub pull request handoff text from Cicero Goals receipts without requiring GitHub credentials.",
+      "description": "A local-first workflow for turning a Cicero Goals board, receipts, changed files, verification output, and commit boundaries into PR-ready Markdown while keeping state.yaml authoritative.",
       "source": "extend/github-pr-workflow",
       "docs": "README.md",
       "use_when": [
@@ -71,16 +71,16 @@
       "name": "GitHub Projects",
       "kind": "integration",
       "version": "0.1.1",
-      "summary": "Mirror GoalBuddy state.yaml tasks into GitHub Projects with dry-run planning, ProjectV2 fields, draft issue upserts, and one Goal Board view.",
+      "summary": "Mirror Cicero Goals state.yaml tasks into GitHub Projects with dry-run planning, ProjectV2 fields, draft issue upserts, and one Goal Board view.",
       "description": "A cataloged one-way GitHub Projects sync extension that ports PR #1 into the extension system while keeping state.yaml authoritative and live GitHub writes credential-gated.",
       "local_use_prompt": "Run the bundled GitHub Projects sync script for docs/goals/<slug>/state.yaml. Use --dry-run first unless the user has approved live GitHub writes, then run the same script with GITHUB_TOKEN or GH_TOKEN and --project-id or --owner plus --project-number. Do not use Computer Use, browser automation, the GitHub web UI, or gh project as a fallback.",
       "source": "extend/github-projects",
       "docs": "README.md",
       "use_when": [
-        "A long-running GoalBuddy board needs stakeholder visibility in GitHub Projects.",
+        "A long-running Cicero Goals board needs stakeholder visibility in GitHub Projects.",
         "The team wants one-way sync from state.yaml into ProjectV2 draft issues.",
         "The PM needs a safe dry-run plan before using GitHub credentials.",
-        "GoalBuddy receipts, verification commands, allowed files, owners, role/agent fields, credential gates, and dependencies should appear in a GitHub board."
+        "Cicero Goals receipts, verification commands, allowed files, owners, role/agent fields, credential gates, and dependencies should appear in a GitHub board."
       ],
       "activation": "publish_handoff",
       "outputs": [
@@ -170,12 +170,100 @@
       ]
     },
     {
+      "id": "local-goal-board",
+      "name": "Local Goal Board",
+      "kind": "visualization",
+      "version": "0.1.0",
+      "summary": "Generate and serve a minimal Cicero Goals-branded local Kanban board that updates live from state.yaml and notes.",
+      "description": "A local-only board viewer that writes a tiny app into docs/goals/<slug>/.cicero-goals-board, serves it through the cicero-goals.localhost hub, and streams state.yaml and notes changes to the browser with no manual reload.",
+      "local_use_prompt": "Run the bundled local board script for docs/goals/<slug>. It writes .cicero-goals-board into the goal directory and serves it through the shared cicero-goals.localhost:41737 hub with live SSE updates from state.yaml and notes. Use --once --json for generation checks and no long-running server.",
+      "source": "extend/local-goal-board",
+      "docs": "README.md",
+      "use_when": [
+        "A human wants to watch a Cicero Goals run in a local board UI.",
+        "The team wants GitHub-Projects-like visibility without GitHub credentials.",
+        "state.yaml and notes should remain the source of truth while the browser updates live."
+      ],
+      "activation": "user_requested",
+      "outputs": [
+        "Local Cicero Goals board web app",
+        "Live state.yaml and notes viewer"
+      ],
+      "requires_approval": false,
+      "safe_by_default": true,
+      "applies_to": {
+        "goal_state": "v2",
+        "surfaces": [
+          "local_browser",
+          "stakeholder_board",
+          "goal_monitoring"
+        ]
+      },
+      "reads": [
+        "docs/goals/<slug>/state.yaml",
+        "docs/goals/<slug>/notes"
+      ],
+      "writes": [
+        "docs/goals/<slug>/.cicero-goals-board",
+        "Local-only board server on loopback"
+      ],
+      "side_effects": [
+        "Starts or reuses a local-only HTTP server for board viewing."
+      ],
+      "auth": {
+        "env": []
+      },
+      "supports": {
+        "dry_run": true,
+        "live_local_server": true,
+        "credentials_required": false
+      },
+      "source_of_truth": "local",
+      "files": [
+        {
+          "path": "README.md",
+          "url": "local-goal-board/README.md",
+          "sha256": "72f5b6a83d67db11723ea167949473c747204d71c09ef4e4d8479ce812a660cd"
+        },
+        {
+          "path": "extension.yaml",
+          "url": "local-goal-board/extension.yaml",
+          "sha256": "fcca54ff9fc7d85cde4483189521abc409e520a77b265da26462a61ebc4276fc"
+        },
+        {
+          "path": "assets/cicero-goals-mark.png",
+          "url": "local-goal-board/assets/cicero-goals-mark.png",
+          "sha256": "d2b2d58eae6ff9029a4d59480a61bd20f013a0f27e14ece02a4064a286abc533"
+        },
+        {
+          "path": "scripts/local-goal-board.mjs",
+          "url": "local-goal-board/scripts/local-goal-board.mjs",
+          "sha256": "eba32aa5f5fb026c69eb813daa25d1f837267b6e9d89826e0b2bd9f38fdc3146"
+        },
+        {
+          "path": "scripts/lib/goal-board.mjs",
+          "url": "local-goal-board/scripts/lib/goal-board.mjs",
+          "sha256": "c210fda720183c157065c35f97b603b6443919408b804efb1fdc0bd4b42219b9"
+        },
+        {
+          "path": "test/local-goal-board.test.mjs",
+          "url": "local-goal-board/test/local-goal-board.test.mjs",
+          "sha256": "a0be9c1b49ef719d1eac678205ecc771b38f686aa0896e3e08416229602674c7"
+        },
+        {
+          "path": "examples/sample-goal/state.yaml",
+          "url": "local-goal-board/examples/sample-goal/state.yaml",
+          "sha256": "cc0cd7945cfb7c23ec8fe4e8d092f3c300ae8dfd53780f427e6c6321fa181b17"
+        }
+      ]
+    },
+    {
       "id": "ai-diff-risk-review",
       "name": "AI diff risk review",
       "kind": "review",
       "version": "0.1.0",
       "summary": "Prepare a local risk review brief for AI-assisted or agent-produced diffs before PR handoff.",
-      "description": "A local-first review workflow for mapping changed files, GoalBuddy receipts, verification evidence, and residual risk into a focused human-review brief.",
+      "description": "A local-first review workflow for mapping changed files, Cicero Goals receipts, verification evidence, and residual risk into a focused human-review brief.",
       "source": "extend/ai-diff-risk-review",
       "docs": "README.md",
       "use_when": [
@@ -626,7 +714,7 @@
       "name": "Codebase onboarding map",
       "kind": "documentation",
       "version": "0.1.0",
-      "summary": "Create a concise local onboarding map from repo files, commands, conventions, examples, and GoalBuddy receipts.",
+      "summary": "Create a concise local onboarding map from repo files, commands, conventions, examples, and Cicero Goals receipts.",
       "description": "A local-first documentation workflow for helping developers and agents understand a repository before implementation or review.",
       "source": "extend/codebase-onboarding-map",
       "docs": "README.md",
@@ -691,7 +779,7 @@
       "name": "Slack standup digest",
       "kind": "integration",
       "version": "0.1.0",
-      "summary": "Prepare a Slack-ready status digest from GoalBuddy receipts while treating live delivery as credential-gated and approval-required.",
+      "summary": "Prepare a Slack-ready status digest from Cicero Goals receipts while treating live delivery as credential-gated and approval-required.",
       "description": "A local-first team communication workflow that produces Slack-ready status text and keeps live Slack delivery separate from board truth.",
       "source": "extend/slack-standup-digest",
       "docs": "README.md",
@@ -756,7 +844,7 @@
       "name": "Linear ticket handoff",
       "kind": "integration",
       "version": "0.1.0",
-      "summary": "Prepare Linear-ready issue text from GoalBuddy receipts while treating live issue creation as credential-gated and approval-required.",
+      "summary": "Prepare Linear-ready issue text from Cicero Goals receipts while treating live issue creation as credential-gated and approval-required.",
       "description": "A local-first ticket handoff workflow that converts receipts, blockers, verification, and acceptance criteria into Linear-ready issue text.",
       "source": "extend/linear-ticket-handoff",
       "docs": "README.md",
