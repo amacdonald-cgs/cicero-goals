@@ -1,9 +1,10 @@
 {
-  "name": "goalbuddy",
+  "name": "cicero-goals",
   "version": "0.2.21",
-  "description": "Turn open-ended Codex goals into a GoalBuddy Scout/Judge/Worker board with receipts, verification, and optional extensions.",
+  "description": "Turn open-ended Codex goals into Cicero Goals workstreams, GoalBuddy boards, receipts, verification, and optional extensions.",
   "type": "module",
   "bin": {
+    "cicero-goals": "internal/cli/goal-maker.mjs",
     "goalbuddy": "internal/cli/goal-maker.mjs",
     "goal-maker": "internal/cli/goal-maker.mjs"
   },
@@ -30,12 +31,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tolibear/goalbuddy.git"
+    "url": "git+https://github.com/tolibear/cicero-goals.git"
   },
   "keywords": [
     "codex",
     "codex-skill",
     "openai-codex",
+    "cicero-goals",
     "goalbuddy",
     "goal",
     "task-board",
@@ -51,9 +53,9 @@
   "author": "tolibear",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/tolibear/goalbuddy/issues"
+    "url": "https://github.com/tolibear/cicero-goals/issues"
   },
-  "homepage": "https://github.com/tolibear/goalbuddy#readme",
+  "homepage": "https://github.com/tolibear/cicero-goals#readme",
   "engines": {
     "node": ">=18"
   },

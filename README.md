@@ -1,4 +1,4 @@
-# GoalBuddy
+# Cicero Goals
 
 <p align="center">
   <a href="https://goalbuddy.dev">
@@ -11,21 +11,30 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/goalbuddy"><img alt="npm" src="https://img.shields.io/npm/v/goalbuddy?style=flat-square&color=684cff"></a>
+  <a href="https://www.npmjs.com/package/cicero-goals"><img alt="npm" src="https://img.shields.io/npm/v/cicero-goals?style=flat-square&color=684cff"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-071236?style=flat-square"></a>
   <a href="https://goalbuddy.dev"><img alt="goalbuddy.dev" src="https://img.shields.io/badge/site-goalbuddy.dev-684cff?style=flat-square"></a>
 </p>
 
-GoalBuddy is a local Codex companion for work that is too broad to trust to a single prompt. It turns a vague request into a `goal.md` charter, a machine-readable `state.yaml` board, role-tagged Scout/Judge/Worker tasks, compact receipts, and verification before completion.
+Cicero Goals is a local Codex companion for work that is too broad to trust to a single prompt. It turns a vague request into a `goal.md` charter, a machine-readable `state.yaml` board, role-tagged Scout/Judge/Worker tasks, compact receipts, and verification before completion.
+
+The repo still keeps `goalbuddy/` as the canonical tracked skill payload and `plugins/goalbuddy/` as the repo-local plugin scaffold, but the published package, plugin identity, and installed workstream surface now use `cicero-goals`.
 
 ```bash
-npx goalbuddy
+npx cicero-goals
 ```
 
 Or install it globally:
 
 ```bash
-npm i -g goalbuddy
+npm i -g cicero-goals
+```
+
+Compatibility aliases remain available:
+
+```bash
+goalbuddy --help
+goal-maker --help
 ```
 
 Then restart Codex and invoke the installed skill:
@@ -34,19 +43,37 @@ Then restart Codex and invoke the installed skill:
 $goal-prep
 ```
 
-`$goal-prep` prepares the GoalBuddy board and prints the `/goal` command to run next. It does not start `/goal` automatically.
+`$goal-prep` prepares the GoalBuddy-style deep board and prints the `/goal` command to run next. It does not start `/goal` automatically.
 
-## Why GoalBuddy Exists
+## Why Cicero Goals Exists
 
 Long Codex goals drift. A request like "improve this project" can turn into unbounded edits, stale verification, and premature completion claims.
 
-GoalBuddy gives Codex a durable loop:
+Cicero Goals gives Codex a durable loop:
 
 ```text
 vague goal -> Scout -> Judge -> Worker -> receipt -> verify -> repeat
 ```
 
 The main `/goal` thread acts as PM. It owns the board, keeps exactly one active task, delegates when useful, records receipts, and only completes after a Judge or PM audit proves the original outcome is done.
+
+## Identity
+
+- `cicero-goals`: canonical package, plugin, install, and CLI identity
+- `goalbuddy`: compatibility CLI alias and tracked repo payload path
+- `goal-maker`: legacy compatibility CLI alias
+
+In the current branch, `cicero-goals` state lives under:
+
+```text
+.codex/cicero-goals/developers/<developer>/
+  current.yaml
+  index.yaml
+  inbox/
+  goals/
+```
+
+The existing GoalBuddy board model still exists for deep orchestration, but not every tracked workstream needs the full Scout/Judge/Worker loop.
 
 ## What You Get Locally
 
@@ -63,7 +90,7 @@ docs/goals/<slug>/
 
 ## The Operating Model
 
-GoalBuddy uses four primitives:
+Cicero Goals uses four primitives:
 
 - **Charter**: states what this goal is trying to accomplish and what must stay true.
 - **Board**: tracks tasks, status, receipts, and verification freshness.
@@ -81,27 +108,34 @@ The default agents are installed with the skill:
 Install and enable the native Codex plugin:
 
 ```bash
-npx goalbuddy
+npx cicero-goals
 ```
 
 Restart Codex, then use `$goal-prep`. To add the optional extension bundle:
 
 ```bash
-npx goalbuddy extend install --all
+npx cicero-goals extend install --all
 ```
 
-If you prefer a global executable, install the npm package globally and run `goalbuddy`:
+If you prefer a global executable, install the npm package globally and run `cicero-goals`:
 
 ```bash
-npm i -g goalbuddy
+npm i -g cicero-goals
+cicero-goals
+```
+
+Compatibility aliases still work:
+
+```bash
 goalbuddy
+goal-maker
 ```
 
 Use the skill-only fallback if your Codex build does not support plugins:
 
 ```bash
-npx goalbuddy install
-npx goalbuddy update
+npx cicero-goals install
+npx cicero-goals update
 ```
 
 Native Codex `/goal` is still an under-development Codex feature. Before relying on the printed command, confirm your local Codex runtime is logged in and has goals enabled:
@@ -109,31 +143,30 @@ Native Codex `/goal` is still an under-development Codex feature. Before relying
 ```bash
 codex login status
 codex features enable goals
-npx goalbuddy doctor --goal-ready
+npx cicero-goals doctor --goal-ready
 ```
 
 Repair only the bundled agent definitions:
 
 ```bash
-npx goalbuddy agents
+npx cicero-goals agents
 ```
 
 Check the local install:
 
 ```bash
-npx goalbuddy doctor
+npx cicero-goals doctor
 ```
 
-Check whether a newer GoalBuddy release is available:
+Check whether a newer Cicero Goals release is available:
 
 ```bash
-npx goalbuddy check-update
+npx cicero-goals check-update
 ```
 
 Use a non-default Codex home:
 
-```bash
-npx goalbuddy --codex-home /path/to/.codex
+cicero-goals current --bootstrap
 ```
 
 `plugin install`, `install`, `update`, and `doctor` also support `--json` when an agent or script needs structured output.
@@ -149,7 +182,7 @@ After `$goal-prep` creates or repairs the board, start the run with the printed 
 Check board health at any time:
 
 ```bash
-node ~/.codex/skills/goalbuddy/scripts/check-goal-state.mjs docs/goals/<slug>/state.yaml
+node ~/.codex/skills/cicero-goals/scripts/check-goal-state.mjs docs/goals/<slug>/state.yaml
 ```
 
 For a broad prompt like "Improve my project," the first active task should usually be Scout, not Worker:
@@ -181,19 +214,36 @@ tasks:
     receipt: null
 ```
 
+## Current Workstream Commands
+
+The repo now also supports a repo-local `cicero-goals` substrate for tracked workstreams:
+
+```bash
+cicero-goals current --bootstrap
+cicero-goals begin "Rebrand GoalBuddy to cicero-goals"
+cicero-goals pause
+cicero-goals resume rebrand-goalbuddy-to-cicero-goals
+cicero-goals end
+cicero-goals use-inbox
+cicero-goals use-goal rebrand-goalbuddy-to-cicero-goals
+cicero-goals goal-runtime attach
+```
+
+Compatibility aliases `goalbuddy` and `goal-maker` still forward to the same commands.
+
 ## Extensions
 
 The npm package is the stable core. Optional extensions live under `extend/` and are discovered from the GitHub-hosted `extend/catalog.json`, so users do not need a new npm release for every integration.
 
 ```bash
-npx goalbuddy extend
-npx goalbuddy extend github-pr-workflow
-npx goalbuddy extend install github-pr-workflow --dry-run
-npx goalbuddy extend install --all --dry-run
-npx goalbuddy extend install --all
+npx cicero-goals extend
+npx cicero-goals extend github-pr-workflow
+npx cicero-goals extend install github-pr-workflow --dry-run
+npx cicero-goals extend install --all --dry-run
+npx cicero-goals extend install --all
 ```
 
-`goalbuddy extend` shows available extensions and detail commands. `goalbuddy extend <id>` shows local install state, activation state, credential requirements, safe-by-default status, and missing environment variables.
+`cicero-goals extend` shows available extensions and detail commands. `cicero-goals extend <id>` shows local install state, activation state, credential requirements, safe-by-default status, and missing environment variables.
 
 Current catalog examples include:
 
@@ -209,10 +259,10 @@ Extensions can publish, report, intake, or add role guidance. They are not board
 
 ## Compatibility Window
 
-GoalBuddy was previously published as `goal-maker`. During the migration window, `npx goal-maker` remains available as a compatibility alias and prints the new command:
+`goal-maker` and `goalbuddy` remain compatibility aliases. Human-facing guidance should use:
 
 ```bash
-npx goalbuddy
+npx cicero-goals
 ```
 
 Machine-readable commands such as `npx goal-maker install --json` keep JSON output clean so existing automation can migrate safely.

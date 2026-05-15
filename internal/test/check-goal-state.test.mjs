@@ -29,6 +29,17 @@ function runChecker(root) {
   };
 }
 
+function runCheckerPath(path) {
+  const result = spawnSync(process.execPath, [checker, path], {
+    encoding: "utf8",
+  });
+  return {
+    status: result.status,
+    stdout: JSON.parse(result.stdout),
+    stderr: result.stderr,
+  };
+}
+
 const validScoutBoard = `
 version: 2
 
@@ -730,6 +741,198 @@ checks:
     const result = runChecker(root);
     assert.equal(result.status, 1);
     assert.match(result.stdout.errors.join("\n"), /missing input or credentials should block specific tasks/i);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("accepts a valid cicero-goals inbox state.yaml", () => {
+  const root = mkdtempSync(join(tmpdir(), "goal-maker-test-"));
+  try {
+    writeFileSync(join(root, "state.yaml"), `
+version: 1
+
+workstream:
+  id: inbox
+  kind: inbox
+  mode: light
+  title: Inbox
+  slug: inbox
+  status: active
+  owner: local
+  source: implicit
+
+repo:
+  repo_root: "/tmp/repo"
+
+context:
+  current_worktree_path: "/tmp/repo"
+  current_branch: "main"
+
+lifecycle:
+  created_at: 2026-05-15T00:00:00Z
+  updated_at: 2026-05-15T00:00:00Z
+  started_at: 2026-05-15T00:00:00Z
+  paused_at: null
+  completed_at: null
+
+summary:
+  objective: "Catchall workstream."
+  current_focus: "Unclassified work."
+  completion_proof: "Not applicable."
+
+activity: []
+
+checks:
+  last_verification:
+    result: unknown
+    at: null
+    commands: []
+`.trimStart());
+    const result = runCheckerPath(join(root, "state.yaml"));
+    assert.equal(result.status, 0, result.stderr || JSON.stringify(result.stdout));
+    assert.equal(result.stdout.ok, true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("rejects invalid cicero-goals inbox mode and status", () => {
+  const root = mkdtempSync(join(tmpdir(), "goal-maker-test-"));
+  try {
+    writeFileSync(join(root, "state.yaml"), `
+version: 1
+
+workstream:
+  id: inbox
+  kind: inbox
+  mode: deep
+  title: Inbox
+  slug: inbox
+  status: done
+  owner: local
+  source: implicit
+`.trimStart());
+    const result = runCheckerPath(join(root, "state.yaml"));
+    assert.equal(result.status, 1);
+    const errors = result.stdout.errors.join("\n");
+    assert.match(errors, /inbox must use mode: light/i);
+    assert.match(errors, /inbox cannot use status: done/i);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("accepts a valid cicero-goals current.yaml", () => {
+  const root = mkdtempSync(join(tmpdir(), "goal-maker-test-"));
+  try {
+    writeFileSync(join(root, "current.yaml"), `
+version: 1
+developer: local
+
+currents:
+  - repo_root: "/tmp/repo"
+    worktree_path: "/tmp/repo"
+    branch: "main"
+    active_ref: inbox
+    active_kind: inbox
+    active_mode: light
+    updated_at: 2026-05-15T00:00:00Z
+`.trimStart());
+    const result = runCheckerPath(join(root, "current.yaml"));
+    assert.equal(result.status, 0, result.stderr || JSON.stringify(result.stdout));
+    assert.equal(result.stdout.ok, true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("rejects cicero-goals current.yaml with duplicate worktree entries", () => {
+  const root = mkdtempSync(join(tmpdir(), "goal-maker-test-"));
+  try {
+    writeFileSync(join(root, "current.yaml"), `
+version: 1
+developer: local
+
+currents:
+  - repo_root: "/tmp/repo"
+    worktree_path: "/tmp/repo"
+    branch: "main"
+    active_ref: inbox
+    active_kind: inbox
+    active_mode: light
+    updated_at: 2026-05-15T00:00:00Z
+  - repo_root: "/tmp/repo"
+    worktree_path: "/tmp/repo"
+    branch: "feature/test"
+    active_ref: goals/example
+    active_kind: goal
+    active_mode: structured
+    updated_at: 2026-05-15T00:00:01Z
+`.trimStart());
+    const result = runCheckerPath(join(root, "current.yaml"));
+    assert.equal(result.status, 1);
+    assert.match(result.stdout.errors.join("\n"), /duplicate current entry for worktree_path/i);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("accepts a valid cicero-goals index.yaml", () => {
+  const root = mkdtempSync(join(tmpdir(), "goal-maker-test-"));
+  try {
+    writeFileSync(join(root, "index.yaml"), `
+version: 1
+developer: local
+updated_at: 2026-05-15T00:00:00Z
+
+goals:
+  - ref: inbox
+    kind: inbox
+    mode: light
+    title: "Inbox"
+    slug: inbox
+    status: active
+    repo_root: "/tmp/repo"
+    updated_at: 2026-05-15T00:00:00Z
+  - ref: goals/example
+    kind: goal
+    mode: structured
+    title: "Example"
+    slug: example
+    status: paused
+    repo_root: "/tmp/repo"
+    updated_at: 2026-05-15T00:00:01Z
+`.trimStart());
+    const result = runCheckerPath(join(root, "index.yaml"));
+    assert.equal(result.status, 0, result.stderr || JSON.stringify(result.stdout));
+    assert.equal(result.stdout.ok, true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("rejects cicero-goals index.yaml entry with invalid mode", () => {
+  const root = mkdtempSync(join(tmpdir(), "goal-maker-test-"));
+  try {
+    writeFileSync(join(root, "index.yaml"), `
+version: 1
+developer: local
+updated_at: 2026-05-15T00:00:00Z
+
+goals:
+  - ref: inbox
+    kind: inbox
+    mode: deep
+    title: "Inbox"
+    slug: inbox
+    status: active
+    repo_root: "/tmp/repo"
+    updated_at: 2026-05-15T00:00:00Z
+`.trimStart());
+    const result = runCheckerPath(join(root, "index.yaml"));
+    assert.equal(result.status, 1);
+    assert.match(result.stdout.errors.join("\n"), /index entry inbox must use mode: light/i);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

@@ -168,6 +168,191 @@ function receiptCommandStatuses(raw) {
     .filter((value) => value !== null);
 }
 
+const detectedVersion = topScalar("version");
+const basenamePath = basename(statePath);
+
+if (basenamePath === "current.yaml") {
+  finish(validateCurrentState());
+}
+if (basenamePath === "index.yaml") {
+  finish(validateIndexState());
+}
+if (detectedVersion === 1 && /^workstream:\s*$/m.test(text)) {
+  finish(validateCiceroWorkstreamState());
+}
+
+function finish(result) {
+  console.log(JSON.stringify(result, null, 2));
+  process.exit(result.ok ? 0 : 1);
+}
+
+function validateCurrentState() {
+  const currentText = readFileSync(statePath, "utf8");
+  const errors = [];
+  const warnings = [];
+  const version = scalarFromText(currentText, "version");
+  const developer = scalarFromText(currentText, "developer");
+  const entries = parseSectionEntries(currentText, "currents", 2);
+
+  if (version !== 1) errors.push("current.yaml must declare version: 1");
+  if (!developer) errors.push("current.yaml missing developer");
+  if (entries.length === 0) errors.push("current.yaml must include at least one current entry");
+
+  const worktrees = new Set();
+  for (const entry of entries) {
+    const worktreePath = entryScalar(entry, "worktree_path");
+    const activeRef = entryScalar(entry, "active_ref");
+    const activeKind = entryScalar(entry, "active_kind");
+    const activeMode = entryScalar(entry, "active_mode");
+    if (!worktreePath) errors.push("current entry missing worktree_path");
+    if (worktrees.has(worktreePath)) errors.push(`duplicate current entry for worktree_path: ${worktreePath}`);
+    worktrees.add(worktreePath);
+    if (!["inbox", "goal"].includes(activeKind)) errors.push(`current entry ${worktreePath || "<missing>"} has invalid active_kind: ${activeKind || "<missing>"}`);
+    if (!["light", "structured", "deep"].includes(activeMode)) errors.push(`current entry ${worktreePath || "<missing>"} has invalid active_mode: ${activeMode || "<missing>"}`);
+    if (!activeRef) errors.push(`current entry ${worktreePath || "<missing>"} missing active_ref`);
+    if (activeRef === "inbox") {
+      if (activeKind !== "inbox") errors.push(`current entry ${worktreePath || "<missing>"} must use active_kind: inbox for active_ref: inbox`);
+      if (activeMode !== "light") errors.push(`current entry ${worktreePath || "<missing>"} must use active_mode: light for active_ref: inbox`);
+    }
+  }
+
+  return {
+    ok: errors.length === 0,
+    version,
+    state_path: statePath,
+    errors,
+    warnings,
+  };
+}
+
+function validateIndexState() {
+  const indexText = readFileSync(statePath, "utf8");
+  const errors = [];
+  const warnings = [];
+  const version = scalarFromText(indexText, "version");
+  const developer = scalarFromText(indexText, "developer");
+  const entries = parseSectionEntries(indexText, "goals", 2);
+
+  if (version !== 1) errors.push("index.yaml must declare version: 1");
+  if (!developer) errors.push("index.yaml missing developer");
+  if (entries.length === 0) errors.push("index.yaml must include at least one goal entry");
+
+  for (const entry of entries) {
+    const ref = entryScalar(entry, "ref");
+    const kind = entryScalar(entry, "kind");
+    const mode = entryScalar(entry, "mode");
+    const status = entryScalar(entry, "status");
+    const title = entryScalar(entry, "title");
+    const slug = entryScalar(entry, "slug");
+    if (!ref) errors.push("index entry missing ref");
+    if (!["inbox", "goal"].includes(kind)) errors.push(`index entry ${ref || "<missing>"} has invalid kind: ${kind || "<missing>"}`);
+    if (!["light", "structured", "deep"].includes(mode)) errors.push(`index entry ${ref || "<missing>"} has invalid mode: ${mode || "<missing>"}`);
+    if (!["active", "paused", "blocked", "done", "archived"].includes(status)) errors.push(`index entry ${ref || "<missing>"} has invalid status: ${status || "<missing>"}`);
+    if (!title) errors.push(`index entry ${ref || "<missing>"} missing title`);
+    if (!slug) errors.push(`index entry ${ref || "<missing>"} missing slug`);
+    if (ref === "inbox") {
+      if (kind !== "inbox") errors.push("index entry inbox must use kind: inbox");
+      if (mode !== "light") errors.push("index entry inbox must use mode: light");
+    }
+  }
+
+  return {
+    ok: errors.length === 0,
+    version,
+    state_path: statePath,
+    errors,
+    warnings,
+  };
+}
+
+function validateCiceroWorkstreamState() {
+  const workstreamText = readFileSync(statePath, "utf8");
+  const errors = [];
+  const warnings = [];
+  const version = scalarFromText(workstreamText, "version");
+  const kind = nestedScalarFromText(workstreamText, "workstream", "kind");
+  const mode = nestedScalarFromText(workstreamText, "workstream", "mode");
+  const status = nestedScalarFromText(workstreamText, "workstream", "status");
+  const slug = nestedScalarFromText(workstreamText, "workstream", "slug");
+
+  if (version !== 1) errors.push("cicero-goals state.yaml must declare version: 1");
+  if (!["inbox", "goal"].includes(kind)) errors.push(`workstream.kind must be inbox or goal; got ${kind || "<missing>"}`);
+  if (!["light", "structured", "deep"].includes(mode)) errors.push(`workstream.mode must be light, structured, or deep; got ${mode || "<missing>"}`);
+  if (!["active", "paused", "blocked", "done", "archived"].includes(status)) errors.push(`workstream.status must be active, paused, blocked, done, or archived; got ${status || "<missing>"}`);
+  if (!slug) errors.push("workstream.slug missing");
+
+  if (kind === "inbox") {
+    if (slug !== "inbox") errors.push(`inbox must use slug: inbox; got ${slug || "<missing>"}`);
+    if (mode !== "light") errors.push("inbox must use mode: light");
+    if (status === "done") errors.push("inbox cannot use status: done");
+    if (/^goal_runtime:\s*$/m.test(workstreamText)) errors.push("inbox must not define goal_runtime");
+  }
+  if (mode === "deep") {
+    if (kind !== "goal") errors.push("deep mode requires workstream.kind: goal");
+    if (!/^goal_runtime:\s*$/m.test(workstreamText)) errors.push("deep mode requires goal_runtime section");
+  }
+
+  return {
+    ok: errors.length === 0,
+    version,
+    state_path: statePath,
+    kind,
+    mode,
+    status,
+    errors,
+    warnings,
+  };
+}
+
+function scalarFromText(sourceText, key) {
+  const match = sourceText.match(new RegExp(`^${key}:\\s*(.*?)\\s*$`, "m"));
+  return match ? clean(match[1]) : null;
+}
+
+function nestedScalarFromText(sourceText, section, key) {
+  const lines = sourceText.split(/\r?\n/);
+  let inSection = false;
+  for (const line of lines) {
+    if (new RegExp(`^${section}:\\s*$`).test(line)) {
+      inSection = true;
+      continue;
+    }
+    if (inSection && /^\S/.test(line)) break;
+    if (inSection) {
+      const match = line.match(new RegExp(`^\\s{2}${key}:\\s*(.*?)\\s*$`));
+      if (match) return clean(match[1]);
+    }
+  }
+  return null;
+}
+
+function parseSectionEntries(sourceText, section, indent) {
+  const lines = sourceText.split(/\r?\n/);
+  const start = lines.findIndex((line) => new RegExp(`^${section}:\\s*$`).test(line));
+  if (start === -1) return [];
+  const entries = [];
+  let current = [];
+  for (let index = start + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (/^\S/.test(line)) break;
+    if (new RegExp(`^\\s{${indent}}-\\s+`).test(line)) {
+      if (current.length) entries.push(current.join("\n"));
+      current = [line];
+      continue;
+    }
+    if (current.length) current.push(line);
+  }
+  if (current.length) entries.push(current.join("\n"));
+  return entries;
+}
+
+function entryScalar(entryText, key) {
+  const firstLine = entryText.match(new RegExp(`^\\s{2}-\\s+${key}:\\s*(.*?)\\s*$`, "m"));
+  if (firstLine) return clean(firstLine[1]);
+  const nested = entryText.match(new RegExp(`^\\s{4}${key}:\\s*(.*?)\\s*$`, "m"));
+  return nested ? clean(nested[1]) : null;
+}
+
 function rootEntryErrors() {
   const allowed = new Set(["goal.md", "state.yaml", "notes"]);
   const unexpected = [];

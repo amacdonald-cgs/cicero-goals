@@ -23,7 +23,10 @@ if (result.status === 0) {
 }
 
 console.error("");
-console.error("GoalBuddy installed globally, but Codex plugin setup did not complete.");
+console.error("Cicero Goals installed globally, but Codex plugin setup did not complete.");
 console.error("Run this after Codex is available:");
+console.error("  cicero-goals");
+console.error("Compatibility executables:");
 console.error("  goalbuddy");
+console.error("  goal-maker");
 process.exit(0);

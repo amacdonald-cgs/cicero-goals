@@ -6,28 +6,30 @@ const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 const marketplace = JSON.parse(readFileSync(".agents/plugins/marketplace.json", "utf8"));
 const plugin = JSON.parse(readFileSync("plugins/goalbuddy/.codex-plugin/plugin.json", "utf8"));
 
-test("GoalBuddy plugin is exposed through a Codex marketplace manifest", () => {
-  assert.equal(marketplace.name, "goalbuddy");
-  assert.equal(marketplace.interface.displayName, "GoalBuddy");
+test("Cicero Goals plugin is exposed through a Codex marketplace manifest", () => {
+  assert.equal(marketplace.name, "cicero-goals");
+  assert.equal(marketplace.interface.displayName, "Cicero Goals");
   assert.equal(marketplace.plugins.length, 1);
 
   const [entry] = marketplace.plugins;
-  assert.equal(entry.name, "goalbuddy");
+  assert.equal(entry.name, "cicero-goals");
   assert.equal(entry.source.source, "local");
   assert.equal(entry.source.path, "./plugins/goalbuddy");
   assert.equal(entry.policy.installation, "INSTALLED_BY_DEFAULT");
   assert.equal(entry.category, "Coding");
 });
 
-test("GoalBuddy plugin metadata tracks the package release", () => {
+test("Cicero Goals plugin metadata tracks the package release", () => {
   assert.equal(plugin.name, pkg.name);
   assert.equal(plugin.version, pkg.version);
-  assert.equal(plugin.repository, "https://github.com/tolibear/goalbuddy");
+  assert.equal(plugin.repository, "https://github.com/tolibear/cicero-goals");
   assert.equal(plugin.skills, "./skills/");
+  assert.equal(plugin.interface.displayName, "Cicero Goals");
+  assert.match(plugin.description, /Cicero Goals/i);
 });
 
-test("GoalBuddy plugin delegates composer invocation to Goal Prep", () => {
+test("Cicero Goals plugin delegates composer invocation to Goal Prep", () => {
   assert.deepEqual(plugin.interface.defaultPrompt, [
-    "$goal-prep prepare a GoalBuddy board for this goal",
+    "$goal-prep prepare a Cicero Goals board for this goal",
   ]);
 });

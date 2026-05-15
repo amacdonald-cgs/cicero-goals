@@ -14,20 +14,53 @@ import { spawnSync } from "node:child_process";
 import { basename, dirname, join, normalize, resolve } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
+import {
+  currentPath as ciceroCurrentPath,
+  defaultDeveloperId,
+  developerRoot as ciceroDeveloperRoot,
+  goalCharterPath,
+  goalNotesPath,
+  goalRoot as ciceroGoalRoot,
+  goalStatePath,
+  goalsRoot as ciceroGoalsRoot,
+  inboxGoalPath,
+  inboxRoot,
+  inboxStatePath,
+  indexPath as ciceroIndexPath,
+  slugifyGoalTitle,
+} from "./paths.mjs";
+import { createCurrentText, readCurrentRef } from "./current-model.mjs";
+import { createIndexText } from "./index-model.mjs";
+import { readText, writeText } from "./state-io.mjs";
+import {
+  attachGoalRuntime,
+  createGoalStateText,
+  createGoalText,
+  createInboxGoalText,
+  createInboxStateText,
+  summarizeWorkstreamFromText,
+  updateWorkstreamMode,
+  updateWorkstreamStatus,
+} from "./workstream-model.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(__dirname, "../..");
-const canonicalProductName = "GoalBuddy";
-const canonicalCliName = "goalbuddy";
-const pluginName = "goalbuddy";
+const canonicalProductName = "Cicero Goals";
+const canonicalCliName = "cicero-goals";
+const pluginName = "cicero-goals";
 const canonicalSkillName = "goal-prep";
-const canonicalSkillDirectory = "goalbuddy";
+const canonicalSkillDirectory = "cicero-goals";
+const canonicalSkillSourceDirectory = "goalbuddy";
+const pluginSourceDirectory = "goalbuddy";
+const compatibilityCliName = "goalbuddy";
+const compatibilitySkillName = "goalbuddy";
 const legacyCliName = "goal-maker";
 const legacySkillName = "goal-maker";
-const skillSource = join(packageRoot, canonicalSkillDirectory);
+const parallelCliName = "cicero-goals";
+const skillSource = join(packageRoot, canonicalSkillSourceDirectory);
 const packageInfo = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"));
 const defaultCodexHome = process.env.CODEX_HOME || join(homedir(), ".codex");
-const defaultCatalogUrl = "https://raw.githubusercontent.com/tolibear/goalbuddy/main/extend/catalog.json";
+const defaultCatalogUrl = "https://raw.githubusercontent.com/tolibear/cicero-goals/main/extend/catalog.json";
 const requiredAgentFiles = [
   "goal_judge.toml",
   "goal_scout.toml",
@@ -70,6 +103,30 @@ async function main() {
     case "doctor":
       doctor();
       break;
+    case "current":
+      currentCommand();
+      break;
+    case "begin":
+      beginCommand();
+      break;
+    case "pause":
+      pauseCommand();
+      break;
+    case "resume":
+      resumeCommand();
+      break;
+    case "end":
+      endCommand();
+      break;
+    case "use-inbox":
+      useInboxCommand();
+      break;
+    case "use-goal":
+      useGoalCommand();
+      break;
+    case "goal-runtime":
+      goalRuntimeCommand();
+      break;
     case "check-update":
     case "update-check":
       checkUpdate();
@@ -105,8 +162,12 @@ function maybePrintLegacyNotice() {
   if (!invokedThroughLegacyName() || hasFlag("--json")) return;
   console.error(`${legacyCliName} has been rebranded to ${canonicalCliName}.`);
   console.error(`Use: npx ${canonicalCliName}`);
-  console.error(`${legacyCliName} remains available temporarily for compatibility.`);
+  console.error(`${compatibilityCliName} and ${legacyCliName} remain available temporarily for compatibility.`);
   console.error("");
+}
+
+function displayCliName() {
+  return [parallelCliName, compatibilityCliName].includes(invokedAs) ? invokedAs : canonicalCliName;
 }
 
 function optionValue(name) {
@@ -139,30 +200,40 @@ function positionalArgs() {
 }
 
 function usage() {
+  const cliName = displayCliName();
   console.log(`Codex ${canonicalProductName}
 
 Usage:
-  ${canonicalCliName} [--codex-home <path>] [--json]
-  ${canonicalCliName} plugin install [--source <marketplace-source>] [--codex-home <path>] [--json]
-  ${canonicalCliName} install [--codex-home <path>] [--force] [--json]
-  ${canonicalCliName} update [--codex-home <path>] [--json]
-  ${canonicalCliName} agents [--codex-home <path>] [--force]
-  ${canonicalCliName} doctor [--codex-home <path>] [--goal-ready]
-  ${canonicalCliName} check-update [--json]
-  ${canonicalCliName} extend [--catalog-url <url-or-path>] [--kind <kind>] [--json]
-  ${canonicalCliName} extend <id> [--catalog-url <url-or-path>] [--json]
-  ${canonicalCliName} extend install <id> [--catalog-url <url-or-path>] [--dry-run] [--force] [--json]
-  ${canonicalCliName} extend install --all [--catalog-url <url-or-path>] [--dry-run] [--force] [--json]
-  ${canonicalCliName} extend doctor [<id>] [--codex-home <path>] [--json]
+  ${cliName} [--codex-home <path>] [--json]
+  ${cliName} plugin install [--source <marketplace-source>] [--codex-home <path>] [--json]
+  ${cliName} install [--codex-home <path>] [--force] [--json]
+  ${cliName} update [--codex-home <path>] [--json]
+  ${cliName} agents [--codex-home <path>] [--force]
+  ${cliName} doctor [--codex-home <path>] [--goal-ready]
+  ${cliName} current [--bootstrap] [--codex-home <path>] [--json]
+  ${cliName} begin <title> [--codex-home <path>] [--json]
+  ${cliName} pause [--codex-home <path>] [--json]
+  ${cliName} resume <goal-slug> [--codex-home <path>] [--json]
+  ${cliName} end [--codex-home <path>] [--json]
+  ${cliName} use-inbox [--codex-home <path>] [--json]
+  ${cliName} use-goal <goal-slug> [--codex-home <path>] [--json]
+  ${cliName} goal-runtime attach [--codex-home <path>] [--json]
+  ${cliName} check-update [--json]
+  ${cliName} extend [--catalog-url <url-or-path>] [--kind <kind>] [--json]
+  ${cliName} extend <id> [--catalog-url <url-or-path>] [--json]
+  ${cliName} extend install <id> [--catalog-url <url-or-path>] [--dry-run] [--force] [--json]
+  ${cliName} extend install --all [--catalog-url <url-or-path>] [--dry-run] [--force] [--json]
+  ${cliName} extend doctor [<id>] [--codex-home <path>] [--json]
 
 Default:
-  ${canonicalCliName}  Installs and enables the native Codex plugin.
+  ${cliName}  Installs and enables the native Codex plugin.
 
 Skill-only fallback:
-  ${canonicalCliName} install  Installs the legacy skill payload and bundled agent definitions.
+  ${cliName} install  Installs the legacy skill payload and bundled agent definitions.
 
 Compatibility:
-  ${legacyCliName} remains a temporary alias and prints the new npx command for human-facing use.
+  ${compatibilityCliName} and ${legacyCliName} remain temporary compatibility aliases.
+  Human-facing guidance should prefer: npx ${canonicalCliName}
 
 Environment:
   CODEX_HOME                         Overrides the default ~/.codex target.
@@ -175,17 +246,339 @@ function codexHome() {
   return resolve(optionValue("--codex-home") || defaultCodexHome);
 }
 
+function developerId() {
+  return defaultDeveloperId;
+}
+
+function workContext(now = new Date().toISOString()) {
+  const cwd = resolve(process.cwd());
+  return {
+    owner: developerId(),
+    repoRoot: cwd,
+    worktreePath: cwd,
+    branch: process.env.GOALBUDDY_BRANCH || "unknown",
+    now,
+  };
+}
+
+function currentFilePath() {
+  return ciceroCurrentPath(codexHome(), developerId());
+}
+
+function indexFilePath() {
+  return ciceroIndexPath(codexHome(), developerId());
+}
+
+function ensureCiceroGoalsWorkspace(context = workContext()) {
+  const inboxDir = inboxRoot(codexHome(), developerId());
+  mkdirSync(inboxDir, { recursive: true });
+  mkdirSync(ciceroGoalsRoot(codexHome(), developerId()), { recursive: true });
+  mkdirSync(ciceroDeveloperRoot(codexHome(), developerId()), { recursive: true });
+
+  if (!existsSync(inboxGoalPath(codexHome(), developerId()))) {
+    writeText(inboxGoalPath(codexHome(), developerId()), createInboxGoalText());
+  }
+  if (!existsSync(inboxStatePath(codexHome(), developerId()))) {
+    writeText(inboxStatePath(codexHome(), developerId()), createInboxStateText(context));
+  }
+  if (!existsSync(currentFilePath())) {
+    writeCurrentState({ ...context, activeRef: "inbox", activeKind: "inbox", activeMode: "light" });
+  }
+  rebuildCiceroGoalsIndex(context);
+  return context;
+}
+
+function writeCurrentState({ repoRoot, worktreePath, branch, activeRef, activeKind, activeMode, now }) {
+  writeText(currentFilePath(), createCurrentText({
+    developer: developerId(),
+    repoRoot,
+    worktreePath,
+    branch,
+    activeRef,
+    activeKind,
+    activeMode,
+    now,
+  }));
+}
+
+function rebuildCiceroGoalsIndex(context = workContext()) {
+  const entries = [];
+  const inboxText = readText(inboxStatePath(codexHome(), developerId()));
+  if (inboxText) {
+    entries.push({ ref: "inbox", ...summarizeWorkstreamFromText("inbox", inboxText) });
+  }
+  const goalsDir = ciceroGoalsRoot(codexHome(), developerId());
+  if (existsSync(goalsDir)) {
+    const slugs = readdirSync(goalsDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort();
+    for (const slug of slugs) {
+      const statePath = goalStatePath(codexHome(), slug, developerId());
+      if (!existsSync(statePath)) continue;
+      entries.push({
+        ref: `goals/${slug}`,
+        ...summarizeWorkstreamFromText(`goals/${slug}`, readText(statePath)),
+      });
+    }
+  }
+  writeText(indexFilePath(), createIndexText({
+    developer: developerId(),
+    entries,
+    now: context.now,
+  }));
+}
+
+function currentCommand() {
+  const context = ensureCiceroGoalsWorkspace();
+  const current = readText(currentFilePath());
+  if (hasFlag("--json")) {
+    printJson({
+      developer: developerId(),
+      current_path: currentFilePath(),
+      index_path: indexFilePath(),
+      active_ref: readCurrentRef(current),
+    });
+    return;
+  }
+  console.log(current);
+}
+
+function beginCommand() {
+  const title = positional(1).trim();
+  if (!title) {
+    throw new Error(`Missing goal title. Usage: ${displayCliName()} begin <title>`);
+  }
+  const context = ensureCiceroGoalsWorkspace();
+  const slug = slugifyGoalTitle(title);
+  const root = ciceroGoalRoot(codexHome(), slug, developerId());
+  if (existsSync(root)) {
+    throw new Error(`Goal already exists: ${slug}`);
+  }
+
+  mkdirSync(goalNotesPath(codexHome(), slug, developerId()), { recursive: true });
+  writeText(goalCharterPath(codexHome(), slug, developerId()), createGoalText(title));
+  writeText(goalStatePath(codexHome(), slug, developerId()), createGoalStateText({
+    ...context,
+    title,
+    slug,
+  }));
+  writeCurrentState({
+    ...context,
+    activeRef: `goals/${slug}`,
+    activeKind: "goal",
+    activeMode: "structured",
+  });
+  rebuildCiceroGoalsIndex(context);
+
+  if (hasFlag("--json")) {
+    printJson({ created: true, slug, ref: `goals/${slug}` });
+    return;
+  }
+  console.log(`Created goal: ${slug}`);
+}
+
+function pauseCommand() {
+  const context = ensureCiceroGoalsWorkspace();
+  const current = readText(currentFilePath());
+  const activeRef = readCurrentRef(current);
+  if (activeRef === "inbox") {
+    throw new Error("Inbox is already the active workstream.");
+  }
+  const slug = activeRef.replace(/^goals\//, "");
+  const statePath = goalStatePath(codexHome(), slug, developerId());
+  if (!existsSync(statePath)) {
+    throw new Error(`Goal state not found: ${activeRef}`);
+  }
+
+  writeText(statePath, updateWorkstreamStatus(
+    readText(statePath),
+    "paused",
+    context.now,
+    context.now,
+    null,
+  ));
+  writeCurrentState({
+    ...context,
+    activeRef: "inbox",
+    activeKind: "inbox",
+    activeMode: "light",
+  });
+  rebuildCiceroGoalsIndex(context);
+
+  if (hasFlag("--json")) {
+    printJson({ paused: true, previous_ref: activeRef, active_ref: "inbox" });
+    return;
+  }
+  console.log(`Paused ${activeRef}`);
+}
+
+function resumeCommand() {
+  const slug = positional(1).trim();
+  if (!slug) {
+    throw new Error(`Missing goal slug. Usage: ${displayCliName()} resume <goal-slug>`);
+  }
+  const context = ensureCiceroGoalsWorkspace();
+  const statePath = goalStatePath(codexHome(), slug, developerId());
+  if (!existsSync(statePath)) {
+    throw new Error(`Goal state not found: goals/${slug}`);
+  }
+
+  const nextState = updateWorkstreamStatus(readText(statePath), "active", context.now, "null", null);
+  writeText(statePath, updateWorkstreamMode(nextState, "structured", context.now));
+  writeCurrentState({
+    ...context,
+    activeRef: `goals/${slug}`,
+    activeKind: "goal",
+    activeMode: "structured",
+  });
+  rebuildCiceroGoalsIndex(context);
+
+  if (hasFlag("--json")) {
+    printJson({ resumed: true, active_ref: `goals/${slug}` });
+    return;
+  }
+  console.log(`Resumed goals/${slug}`);
+}
+
+function endCommand() {
+  const context = ensureCiceroGoalsWorkspace();
+  const activeRef = readCurrentRef(readText(currentFilePath()));
+  if (activeRef === "inbox") {
+    throw new Error("Cannot end inbox.");
+  }
+  const slug = activeRef.replace(/^goals\//, "");
+  const statePath = goalStatePath(codexHome(), slug, developerId());
+  if (!existsSync(statePath)) {
+    throw new Error(`Goal state not found: ${activeRef}`);
+  }
+
+  writeText(statePath, updateWorkstreamStatus(
+    readText(statePath),
+    "done",
+    context.now,
+    "null",
+    context.now,
+  ));
+  writeCurrentState({
+    ...context,
+    activeRef: "inbox",
+    activeKind: "inbox",
+    activeMode: "light",
+  });
+  rebuildCiceroGoalsIndex(context);
+
+  if (hasFlag("--json")) {
+    printJson({ ended: true, previous_ref: activeRef, active_ref: "inbox" });
+    return;
+  }
+  console.log(`Ended ${activeRef}`);
+}
+
+function goalRuntimeCommand() {
+  const subcommand = positional(1) || "";
+  switch (subcommand) {
+    case "attach":
+      attachGoalRuntimeCommand();
+      break;
+    default:
+      throw new Error(`Unknown goal-runtime command: ${subcommand || "<missing>"}`);
+  }
+}
+
+function useInboxCommand() {
+  const context = ensureCiceroGoalsWorkspace();
+  writeCurrentState({
+    ...context,
+    activeRef: "inbox",
+    activeKind: "inbox",
+    activeMode: "light",
+  });
+  rebuildCiceroGoalsIndex(context);
+
+  if (hasFlag("--json")) {
+    printJson({ active_ref: "inbox" });
+    return;
+  }
+  console.log("Switched to inbox");
+}
+
+function useGoalCommand() {
+  const slug = positional(1).trim();
+  if (!slug) {
+    throw new Error(`Missing goal slug. Usage: ${canonicalCliName} use-goal <goal-slug>`);
+  }
+  const context = ensureCiceroGoalsWorkspace();
+  const statePath = goalStatePath(codexHome(), slug, developerId());
+  if (!existsSync(statePath)) {
+    throw new Error(`Goal state not found: goals/${slug}`);
+  }
+
+  let state = readText(statePath);
+  const summary = summarizeWorkstreamFromText(`goals/${slug}`, state);
+  const nextMode = summary.mode || "structured";
+  if (summary.status === "paused") {
+    state = updateWorkstreamStatus(state, "active", context.now, "null", null);
+    writeText(statePath, state);
+  }
+  writeCurrentState({
+    ...context,
+    activeRef: `goals/${slug}`,
+    activeKind: "goal",
+    activeMode: nextMode,
+  });
+  rebuildCiceroGoalsIndex(context);
+
+  if (hasFlag("--json")) {
+    printJson({ active_ref: `goals/${slug}`, active_mode: nextMode });
+    return;
+  }
+  console.log(`Switched to goals/${slug}`);
+}
+
+function attachGoalRuntimeCommand() {
+  const context = ensureCiceroGoalsWorkspace();
+  const activeRef = readCurrentRef(readText(currentFilePath()));
+  if (activeRef === "inbox") {
+    throw new Error("Cannot attach /goal runtime to inbox.");
+  }
+  const slug = activeRef.replace(/^goals\//, "");
+  const statePath = goalStatePath(codexHome(), slug, developerId());
+  if (!existsSync(statePath)) {
+    throw new Error(`Goal state not found: ${activeRef}`);
+  }
+  const commandText = `/goal Follow .codex/cicero-goals/developers/${developerId()}/goals/${slug}/goal.md.`;
+  writeText(statePath, attachGoalRuntime(readText(statePath), {
+    command: commandText,
+    now: context.now,
+  }));
+  writeCurrentState({
+    ...context,
+    activeRef,
+    activeKind: "goal",
+    activeMode: "deep",
+  });
+  rebuildCiceroGoalsIndex(context);
+
+  if (hasFlag("--json")) {
+    printJson({ attached: true, active_ref: activeRef, mode: "deep", command: commandText });
+    return;
+  }
+  console.log(`Attached /goal runtime to ${activeRef}`);
+}
+
 function installSkill({ force = true, quiet = false } = {}) {
   const target = installedSkillRoot();
+  const compatibilityTarget = compatibilityInstalledSkillRoot();
   const legacyTarget = legacyInstalledSkillRoot();
   if (!existsSync(skillSource)) {
     console.error(`Skill payload not found: ${skillSource}`);
     process.exit(1);
   }
 
-  const previousMetadata = readInstallMetadata(target) || readInstallMetadata(legacyTarget);
+  const previousMetadata = readInstallMetadata(target) || readInstallMetadata(compatibilityTarget) || readInstallMetadata(legacyTarget);
   const previousFingerprint = existsSync(target) ? directoryFingerprint(target, { exclude: installFingerprintExcludes() }) : "";
-  const preservedExtensions = preserveInstalledExtensions([target, legacyTarget]);
+  const preservedExtensions = preserveInstalledExtensions([target, compatibilityTarget, legacyTarget]);
   const extensionTempPath = preservedExtensions.tempPath;
   const preservedExtensionIds = preservedExtensions.ids;
 
@@ -205,12 +598,14 @@ function installSkill({ force = true, quiet = false } = {}) {
   restoreInstalledExtensions(target, extensionTempPath);
   writeInstallMetadata(target, previousMetadata);
 
-  mkdirSync(dirname(legacyTarget), { recursive: true });
-  rmSync(legacyTarget, { recursive: true, force: true });
-  mkdirSync(legacyTarget, { recursive: true });
-  writeFileSync(join(legacyTarget, "SKILL.md"), compatibilitySkillBody());
-  restoreInstalledExtensions(legacyTarget, extensionTempPath);
-  writeInstallMetadata(legacyTarget, previousMetadata);
+  for (const alias of compatibilitySkillAliases()) {
+    mkdirSync(dirname(alias.root), { recursive: true });
+    rmSync(alias.root, { recursive: true, force: true });
+    mkdirSync(alias.root, { recursive: true });
+    writeFileSync(join(alias.root, "SKILL.md"), compatibilitySkillBody(alias.name));
+    restoreInstalledExtensions(alias.root, extensionTempPath);
+    writeInstallMetadata(alias.root, previousMetadata);
+  }
   cleanupPreservedExtensions([extensionTempPath]);
 
   const currentFingerprint = directoryFingerprint(target, { exclude: installFingerprintExcludes() });
@@ -222,28 +617,30 @@ function installSkill({ force = true, quiet = false } = {}) {
   return {
     status,
     path: target,
-    compatibility_path: legacyTarget,
+    compatibility_path: compatibilityTarget,
+    legacy_compatibility_path: legacyTarget,
     previous_version: previousMetadata?.package_version || "",
     current_version: packageInfo.version,
     preserved_extensions: preservedExtensionIds,
   };
 }
 
-function compatibilitySkillBody() {
+function compatibilitySkillBody(aliasName) {
+  const aliasProduct = aliasName === legacySkillName ? "Goal Maker" : "GoalBuddy";
   return `---
-name: ${legacySkillName}
-description: Compatibility alias for GoalBuddy. Use $${canonicalSkillName} as the canonical skill.
+name: ${aliasName}
+description: Compatibility alias for ${canonicalProductName}. Use $${canonicalSkillName} as the canonical skill.
 ---
 
-# GoalBuddy Compatibility Alias
+# ${canonicalProductName} Compatibility Alias
 
-$${legacySkillName} is the previous name for $${canonicalSkillName}.
+$${aliasName} is a compatibility alias for $${canonicalSkillName}.
 
 Use $${canonicalSkillName} for new work. This compatibility skill exists so older prompts and local installs do not fail after the rebrand.
 
-When invoked through $${legacySkillName}:
+When invoked through $${aliasName}:
 
-1. Tell the user Goal Maker has been rebranded to GoalBuddy.
+1. Tell the user ${aliasProduct} has been rebranded to ${canonicalProductName}.
 2. Show the canonical command: $${canonicalSkillName}.
 3. If the user wants to continue immediately, follow the same workflow as $${canonicalSkillName}: run diagnostic intake, create or repair \`docs/goals/<slug>/goal.md\` and \`state.yaml\`, preserve one active task, and print \`/goal Follow docs/goals/<slug>/goal.md.\` without starting \`/goal\` automatically.
 
@@ -302,9 +699,11 @@ async function installAll() {
 
 function doctor() {
   const skillPath = join(installedSkillRoot(), "SKILL.md");
+  const compatibilitySkillPath = join(compatibilityInstalledSkillRoot(), "SKILL.md");
   const legacySkillPath = join(legacyInstalledSkillRoot(), "SKILL.md");
   const agentsPath = join(codexHome(), "agents");
   const installed = existsSync(skillPath);
+  const compatibilityInstalled = existsSync(compatibilitySkillPath);
   const legacyInstalled = existsSync(legacySkillPath);
   const agents = existsSync(agentsPath)
     ? readdirSync(agentsPath).filter((file) => file.startsWith("goal_") && file.endsWith(".toml"))
@@ -326,8 +725,10 @@ function doctor() {
     codex_home: codexHome(),
     skill_installed: installed,
     skill_path: skillPath,
-    compatibility_skill_installed: legacyInstalled,
-    compatibility_skill_path: legacySkillPath,
+    compatibility_skill_installed: compatibilityInstalled,
+    compatibility_skill_path: compatibilitySkillPath,
+    legacy_compatibility_skill_installed: legacyInstalled,
+    legacy_compatibility_skill_path: legacySkillPath,
     installed_agents: agents,
     missing_agents: missingAgents,
     stale_agents: staleAgents,
@@ -335,7 +736,7 @@ function doctor() {
     warnings,
   }, null, 2));
 
-  const installOk = installed && missingAgents.length === 0 && staleAgents.length === 0;
+  const installOk = installed && compatibilityInstalled && legacyInstalled && missingAgents.length === 0 && staleAgents.length === 0;
   const goalReadyOk = !hasFlag("--goal-ready") || goalRuntime.ready;
   process.exit(installOk && goalReadyOk ? 0 : 1);
 }
@@ -349,12 +750,12 @@ function checkUpdate() {
   }
 
   if (report.check_status !== "ok") {
-    console.log(`GoalBuddy update check unavailable: ${report.error}`);
+    console.log(`${canonicalProductName} update check unavailable: ${report.error}`);
   } else if (report.update_available) {
-    console.log(`GoalBuddy ${report.latest_version} is available; installed version is ${report.current_version}.`);
+    console.log(`${canonicalProductName} ${report.latest_version} is available; installed version is ${report.current_version}.`);
     console.log(`Update with: ${report.update_command}`);
   } else {
-    console.log(`GoalBuddy is up to date (${report.current_version}).`);
+    console.log(`${canonicalProductName} is up to date (${report.current_version}).`);
   }
 }
 
@@ -365,7 +766,7 @@ function updateReport() {
     latest_version: null,
     update_available: false,
     check_status: "unknown",
-    update_command: `npx ${canonicalCliName}`,
+    update_command: `npx ${packageInfo.name}`,
   };
 
   try {
@@ -399,19 +800,20 @@ function plugin() {
 }
 
 function pluginUsage() {
+  const cliName = displayCliName();
   console.log(`${canonicalProductName} Plugin
 
 Usage:
-  ${canonicalCliName} plugin install [--source <marketplace-source>] [--codex-home <path>] [--json]
+  ${cliName} plugin install [--source <marketplace-source>] [--codex-home <path>] [--json]
 
 Default source:
-  tolibear/goalbuddy
+  tolibear/cicero-goals
 `);
 }
 
 function installPlugin() {
-  const source = optionValue("--source") || "tolibear/goalbuddy";
-  const pluginSource = join(packageRoot, "plugins", pluginName);
+  const source = optionValue("--source") || "tolibear/cicero-goals";
+  const pluginSource = join(packageRoot, "plugins", pluginSourceDirectory);
   const pluginManifestPath = join(pluginSource, ".codex-plugin", "plugin.json");
   if (!existsSync(pluginManifestPath)) {
     throw new Error(`Plugin manifest not found: ${pluginManifestPath}`);
@@ -451,6 +853,8 @@ function installPlugin() {
   console.log("");
   console.log("Restart Codex, then use:");
   console.log(`  $${canonicalSkillName}`);
+  console.log("Global installs also expose:");
+  console.log(`  ${parallelCliName}`);
   console.log("");
   console.log("Optional extensions:");
   console.log(`  npx ${canonicalCliName} extend`);
@@ -609,14 +1013,15 @@ async function extend() {
 }
 
 function extendUsage() {
+  const cliName = displayCliName();
   console.log(`${canonicalProductName} Extend
 
 Usage:
-  ${canonicalCliName} extend [--catalog-url <url-or-path>] [--kind <kind>] [--json]
-  ${canonicalCliName} extend <id> [--catalog-url <url-or-path>] [--json]
-  ${canonicalCliName} extend install <id> [--catalog-url <url-or-path>] [--dry-run] [--force] [--json]
-  ${canonicalCliName} extend install --all [--catalog-url <url-or-path>] [--dry-run] [--force] [--json]
-  ${canonicalCliName} extend doctor [<id>] [--codex-home <path>] [--json]
+  ${cliName} extend [--catalog-url <url-or-path>] [--kind <kind>] [--json]
+  ${cliName} extend <id> [--catalog-url <url-or-path>] [--json]
+  ${cliName} extend install <id> [--catalog-url <url-or-path>] [--dry-run] [--force] [--json]
+  ${cliName} extend install --all [--catalog-url <url-or-path>] [--dry-run] [--force] [--json]
+  ${cliName} extend doctor [<id>] [--codex-home <path>] [--json]
 
 States:
   available   Listed in the catalog.
@@ -876,6 +1281,17 @@ function installedSkillRoot() {
   return join(codexHome(), "skills", canonicalSkillDirectory);
 }
 
+function compatibilityInstalledSkillRoot() {
+  return join(codexHome(), "skills", compatibilitySkillName);
+}
+
+function compatibilitySkillAliases() {
+  return [
+    { name: compatibilitySkillName, root: compatibilityInstalledSkillRoot() },
+    { name: legacySkillName, root: legacyInstalledSkillRoot() },
+  ];
+}
+
 function installedPluginSkillRoot() {
   const root = join(codexHome(), "plugins", "cache", pluginName, pluginName);
   if (!existsSync(root)) return "";
@@ -885,8 +1301,10 @@ function installedPluginSkillRoot() {
     .sort(compareVersions)
     .reverse();
   for (const version of versions) {
-    const skillPath = join(root, version, "skills", canonicalSkillDirectory);
-    if (existsSync(join(skillPath, "SKILL.md"))) return skillPath;
+    const canonicalSkillPath = join(root, version, "skills", canonicalSkillDirectory);
+    if (existsSync(join(canonicalSkillPath, "SKILL.md"))) return canonicalSkillPath;
+    const compatibilitySkillPath = join(root, version, "skills", compatibilitySkillName);
+    if (existsSync(join(compatibilitySkillPath, "SKILL.md"))) return compatibilitySkillPath;
   }
   return "";
 }
@@ -1074,19 +1492,23 @@ function uniqueSorted(values) {
 }
 
 function installFingerprintExcludes() {
-  return new Set(["extend", ".goalbuddy-install.json", ".goal-maker-install.json"]);
+  return new Set(["extend", ".cicero-goals-install.json", ".goalbuddy-install.json", ".goal-maker-install.json"]);
 }
 
 function installMetadataPath(target) {
-  return join(target, ".goalbuddy-install.json");
+  return join(target, ".cicero-goals-install.json");
 }
 
 function legacyInstallMetadataPath(target) {
   return join(target, ".goal-maker-install.json");
 }
 
+function compatibilityInstallMetadataPath(target) {
+  return join(target, ".goalbuddy-install.json");
+}
+
 function readInstallMetadata(target) {
-  for (const path of [installMetadataPath(target), legacyInstallMetadataPath(target)]) {
+  for (const path of [installMetadataPath(target), compatibilityInstallMetadataPath(target), legacyInstallMetadataPath(target)]) {
     if (!existsSync(path)) continue;
     try {
       return JSON.parse(readFileSync(path, "utf8"));

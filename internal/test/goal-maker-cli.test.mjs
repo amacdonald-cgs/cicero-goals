@@ -1,4 +1,4 @@
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -7,7 +7,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 const cli = resolve("internal/cli/goal-maker.mjs");
-const packageVersion = JSON.parse(readFileSync("package.json", "utf8")).version;
+const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+const packageVersion = pkg.version;
 
 function runGoalMaker(args, options = {}) {
   const result = spawnSync(process.execPath, [cli, ...args], {
@@ -141,6 +142,271 @@ function writeCatalog(root) {
   return catalogPath;
 }
 
+function developerRoot(codexHome, developer = "local") {
+  return join(codexHome, ".codex", "cicero-goals", "developers", developer);
+}
+
+function inboxStatePath(codexHome, developer = "local") {
+  return join(developerRoot(codexHome, developer), "inbox", "state.yaml");
+}
+
+function currentPath(codexHome, developer = "local") {
+  return join(developerRoot(codexHome, developer), "current.yaml");
+}
+
+function indexPath(codexHome, developer = "local") {
+  return join(developerRoot(codexHome, developer), "index.yaml");
+}
+
+function goalRoot(codexHome, slug, developer = "local") {
+  return join(developerRoot(codexHome, developer), "goals", slug);
+}
+
+test("package exposes cicero-goals as the primary CLI bin", () => {
+  assert.equal(pkg.bin["cicero-goals"], "internal/cli/goal-maker.mjs");
+});
+
+test("current --bootstrap creates inbox, current.yaml, and index.yaml", () => {
+  const codexHome = mkdtempSync(join(tmpdir(), "goal-maker-cli-test-"));
+  try {
+    const result = runGoalMaker(["current", "--bootstrap", "--codex-home", codexHome]);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+
+    assert.equal(existsSync(inboxStatePath(codexHome)), true);
+    assert.equal(existsSync(currentPath(codexHome)), true);
+    assert.equal(existsSync(indexPath(codexHome)), true);
+
+    const inbox = readFileSync(inboxStatePath(codexHome), "utf8");
+    assert.match(inbox, /kind:\s*inbox/);
+    assert.match(inbox, /mode:\s*light/);
+    assert.match(inbox, /status:\s*active/);
+
+    const current = readFileSync(currentPath(codexHome), "utf8");
+    assert.match(current, /active_ref:\s*inbox/);
+    assert.match(current, /active_kind:\s*inbox/);
+    assert.match(current, /active_mode:\s*light/);
+
+    const index = readFileSync(indexPath(codexHome), "utf8");
+    assert.match(index, /ref:\s*inbox/);
+    assert.match(index, /title:\s*"Inbox"|title:\s*Inbox/);
+  } finally {
+    rmSync(codexHome, { recursive: true, force: true });
+  }
+});
+
+test("begin creates an explicit goal and makes it current", () => {
+  const codexHome = mkdtempSync(join(tmpdir(), "goal-maker-cli-test-"));
+  try {
+    const result = runGoalMaker([
+      "begin",
+      "Rebrand GoalBuddy to cicero-goals",
+      "--codex-home",
+      codexHome,
+    ]);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+
+    const slug = "rebrand-goalbuddy-to-cicero-goals";
+    assert.equal(existsSync(join(goalRoot(codexHome, slug), "goal.md")), true);
+    assert.equal(existsSync(join(goalRoot(codexHome, slug), "state.yaml")), true);
+
+    const state = readFileSync(join(goalRoot(codexHome, slug), "state.yaml"), "utf8");
+    assert.match(state, /kind:\s*goal/);
+    assert.match(state, /mode:\s*structured/);
+    assert.match(state, /status:\s*active/);
+    assert.match(state, /slug:\s*"rebrand-goalbuddy-to-cicero-goals"|slug:\s*rebrand-goalbuddy-to-cicero-goals/);
+
+    const current = readFileSync(currentPath(codexHome), "utf8");
+    assert.match(current, /active_ref:\s*goals\/rebrand-goalbuddy-to-cicero-goals/);
+    assert.match(current, /active_kind:\s*goal/);
+    assert.match(current, /active_mode:\s*structured/);
+
+    const index = readFileSync(indexPath(codexHome), "utf8");
+    assert.match(index, /ref:\s*goals\/rebrand-goalbuddy-to-cicero-goals/);
+    assert.match(index, /mode:\s*structured/);
+  } finally {
+    rmSync(codexHome, { recursive: true, force: true });
+  }
+});
+
+test("pause marks the current explicit goal paused and returns the worktree to inbox", () => {
+  const codexHome = mkdtempSync(join(tmpdir(), "goal-maker-cli-test-"));
+  try {
+    const begin = runGoalMaker([
+      "begin",
+      "Review plugin entrypoint behavior",
+      "--codex-home",
+      codexHome,
+    ]);
+    assert.equal(begin.status, 0, begin.stderr || begin.stdout);
+
+    const pause = runGoalMaker(["pause", "--codex-home", codexHome]);
+    assert.equal(pause.status, 0, pause.stderr || pause.stdout);
+
+    const slug = "review-plugin-entrypoint-behavior";
+    const state = readFileSync(join(goalRoot(codexHome, slug), "state.yaml"), "utf8");
+    assert.match(state, /status:\s*paused/);
+
+    const current = readFileSync(currentPath(codexHome), "utf8");
+    assert.match(current, /active_ref:\s*inbox/);
+    assert.match(current, /active_kind:\s*inbox/);
+    assert.match(current, /active_mode:\s*light/);
+  } finally {
+    rmSync(codexHome, { recursive: true, force: true });
+  }
+});
+
+test("resume makes a paused goal current again", () => {
+  const codexHome = mkdtempSync(join(tmpdir(), "goal-maker-cli-test-"));
+  try {
+    assert.equal(runGoalMaker([
+      "begin",
+      "Review plugin entrypoint behavior",
+      "--codex-home",
+      codexHome,
+    ]).status, 0);
+    assert.equal(runGoalMaker(["pause", "--codex-home", codexHome]).status, 0);
+
+    const resume = runGoalMaker([
+      "resume",
+      "review-plugin-entrypoint-behavior",
+      "--codex-home",
+      codexHome,
+    ]);
+    assert.equal(resume.status, 0, resume.stderr || resume.stdout);
+
+    const state = readFileSync(join(goalRoot(codexHome, "review-plugin-entrypoint-behavior"), "state.yaml"), "utf8");
+    assert.match(state, /status:\s*active/);
+
+    const current = readFileSync(currentPath(codexHome), "utf8");
+    assert.match(current, /active_ref:\s*goals\/review-plugin-entrypoint-behavior/);
+    assert.match(current, /active_kind:\s*goal/);
+    assert.match(current, /active_mode:\s*structured/);
+  } finally {
+    rmSync(codexHome, { recursive: true, force: true });
+  }
+});
+
+test("end marks an explicit goal done and returns the worktree to inbox", () => {
+  const codexHome = mkdtempSync(join(tmpdir(), "goal-maker-cli-test-"));
+  try {
+    assert.equal(runGoalMaker([
+      "begin",
+      "Review plugin entrypoint behavior",
+      "--codex-home",
+      codexHome,
+    ]).status, 0);
+
+    const end = runGoalMaker(["end", "--codex-home", codexHome]);
+    assert.equal(end.status, 0, end.stderr || end.stdout);
+
+    const state = readFileSync(join(goalRoot(codexHome, "review-plugin-entrypoint-behavior"), "state.yaml"), "utf8");
+    assert.match(state, /status:\s*done/);
+    assert.doesNotMatch(state, /completed_at:\s*null/);
+
+    const current = readFileSync(currentPath(codexHome), "utf8");
+    assert.match(current, /active_ref:\s*inbox/);
+    assert.match(current, /active_kind:\s*inbox/);
+    assert.match(current, /active_mode:\s*light/);
+  } finally {
+    rmSync(codexHome, { recursive: true, force: true });
+  }
+});
+
+test("goal-runtime attach upgrades the current explicit goal to deep mode", () => {
+  const codexHome = mkdtempSync(join(tmpdir(), "goal-maker-cli-test-"));
+  try {
+    assert.equal(runGoalMaker([
+      "begin",
+      "Rebrand GoalBuddy to cicero-goals",
+      "--codex-home",
+      codexHome,
+    ]).status, 0);
+
+    const attach = runGoalMaker(["goal-runtime", "attach", "--codex-home", codexHome]);
+    assert.equal(attach.status, 0, attach.stderr || attach.stdout);
+
+    const state = readFileSync(join(goalRoot(codexHome, "rebrand-goalbuddy-to-cicero-goals"), "state.yaml"), "utf8");
+    assert.match(state, /mode:\s*deep/);
+    assert.match(state, /goal_runtime:/);
+    assert.match(state, /attached:\s*true/);
+    assert.match(state, /command:\s*"\/goal Follow \.codex\/cicero-goals\/developers\/local\/goals\/rebrand-goalbuddy-to-cicero-goals\/goal\.md\."|command:\s*\/goal Follow/);
+
+    const current = readFileSync(currentPath(codexHome), "utf8");
+    assert.match(current, /active_mode:\s*deep/);
+  } finally {
+    rmSync(codexHome, { recursive: true, force: true });
+  }
+});
+
+test("goal-runtime attach rejects inbox as the current workstream", () => {
+  const codexHome = mkdtempSync(join(tmpdir(), "goal-maker-cli-test-"));
+  try {
+    assert.equal(runGoalMaker(["current", "--bootstrap", "--codex-home", codexHome]).status, 0);
+
+    const attach = runGoalMaker(["goal-runtime", "attach", "--codex-home", codexHome]);
+    assert.equal(attach.status, 1, attach.stderr || attach.stdout);
+    assert.match(attach.stderr, /Cannot attach \/goal runtime to inbox/);
+  } finally {
+    rmSync(codexHome, { recursive: true, force: true });
+  }
+});
+
+test("use-inbox switches the current worktree back to inbox without changing goal status", () => {
+  const codexHome = mkdtempSync(join(tmpdir(), "goal-maker-cli-test-"));
+  try {
+    assert.equal(runGoalMaker([
+      "begin",
+      "Review plugin entrypoint behavior",
+      "--codex-home",
+      codexHome,
+    ]).status, 0);
+
+    const useInbox = runGoalMaker(["use-inbox", "--codex-home", codexHome]);
+    assert.equal(useInbox.status, 0, useInbox.stderr || useInbox.stdout);
+
+    const state = readFileSync(join(goalRoot(codexHome, "review-plugin-entrypoint-behavior"), "state.yaml"), "utf8");
+    assert.match(state, /status:\s*active/);
+
+    const current = readFileSync(currentPath(codexHome), "utf8");
+    assert.match(current, /active_ref:\s*inbox/);
+    assert.match(current, /active_kind:\s*inbox/);
+    assert.match(current, /active_mode:\s*light/);
+  } finally {
+    rmSync(codexHome, { recursive: true, force: true });
+  }
+});
+
+test("use-goal attaches an existing goal to the current worktree and resumes it if paused", () => {
+  const codexHome = mkdtempSync(join(tmpdir(), "goal-maker-cli-test-"));
+  try {
+    assert.equal(runGoalMaker([
+      "begin",
+      "Review plugin entrypoint behavior",
+      "--codex-home",
+      codexHome,
+    ]).status, 0);
+    assert.equal(runGoalMaker(["pause", "--codex-home", codexHome]).status, 0);
+
+    const useGoal = runGoalMaker([
+      "use-goal",
+      "review-plugin-entrypoint-behavior",
+      "--codex-home",
+      codexHome,
+    ]);
+    assert.equal(useGoal.status, 0, useGoal.stderr || useGoal.stdout);
+
+    const state = readFileSync(join(goalRoot(codexHome, "review-plugin-entrypoint-behavior"), "state.yaml"), "utf8");
+    assert.match(state, /status:\s*active/);
+
+    const current = readFileSync(currentPath(codexHome), "utf8");
+    assert.match(current, /active_ref:\s*goals\/review-plugin-entrypoint-behavior/);
+    assert.match(current, /active_kind:\s*goal/);
+    assert.match(current, /active_mode:\s*structured/);
+  } finally {
+    rmSync(codexHome, { recursive: true, force: true });
+  }
+});
+
 test("doctor fails when a required bundled agent is missing", () => {
   const codexHome = mkdtempSync(join(tmpdir(), "goal-maker-cli-test-"));
   try {
@@ -155,8 +421,9 @@ test("doctor fails when a required bundled agent is missing", () => {
     const report = JSON.parse(doctor.stdout);
     assert.equal(report.skill_installed, true);
     assert.equal(report.compatibility_skill_installed, true);
-    assert.match(report.skill_path, pathSuffixPattern("skills", "goalbuddy", "SKILL.md"));
-    assert.match(report.compatibility_skill_path, pathSuffixPattern("skills", "goal-maker", "SKILL.md"));
+    assert.match(report.skill_path, pathSuffixPattern("skills", "cicero-goals", "SKILL.md"));
+    assert.match(report.compatibility_skill_path, pathSuffixPattern("skills", "goalbuddy", "SKILL.md"));
+    assert.match(report.legacy_compatibility_skill_path, pathSuffixPattern("skills", "goal-maker", "SKILL.md"));
     assert.deepEqual(report.missing_agents, ["goal_worker.toml"]);
   } finally {
     rmSync(codexHome, { recursive: true, force: true });
@@ -214,7 +481,7 @@ test("doctor reports native goal runtime readiness and supports strict goal-read
   }
 });
 
-test("check-update reports newer published GoalBuddy versions", () => {
+test("check-update reports newer published Cicero Goals versions", () => {
   const env = {
     ...process.env,
     GOALBUDDY_TEST_NPM_LATEST_VERSION: "99.0.0",
@@ -226,12 +493,12 @@ test("check-update reports newer published GoalBuddy versions", () => {
   assert.equal(report.current_version, packageVersion);
   assert.equal(report.latest_version, "99.0.0");
   assert.equal(report.update_available, true);
-  assert.equal(report.update_command, "npx goalbuddy");
+  assert.equal(report.update_command, "npx cicero-goals");
 
   const human = runGoalMaker(["check-update"], { env });
   assert.equal(human.status, 0, human.stderr || human.stdout);
-  assert.match(human.stdout, /GoalBuddy 99\.0\.0 is available/);
-  assert.match(human.stdout, /Update with: npx goalbuddy/);
+  assert.match(human.stdout, /Cicero Goals 99\.0\.0 is available/);
+  assert.match(human.stdout, /Update with: npx cicero-goals/);
 });
 
 test("plugin install adds marketplace, caches plugin, and enables config", () => {
@@ -249,13 +516,13 @@ test("plugin install adds marketplace, caches plugin, and enables config", () =>
 
     const report = JSON.parse(install.stdout);
     assert.equal(report.installed, true);
-    assert.equal(report.plugin, "goalbuddy@goalbuddy");
+    assert.equal(report.plugin, "cicero-goals@cicero-goals");
     assert.equal(report.version, packageVersion);
-    assert.match(report.cache_path, pathSuffixPattern("plugins", "cache", "goalbuddy", "goalbuddy", packageVersion));
+    assert.match(report.cache_path, pathSuffixPattern("plugins", "cache", "cicero-goals", "cicero-goals", packageVersion));
     assert.match(report.config_path, /config\.toml$/);
 
     const config = readFileSync(join(codexHome, "config.toml"), "utf8");
-    assert.match(config, /\[plugins\."goalbuddy@goalbuddy"\]/);
+    assert.match(config, /\[plugins\."cicero-goals@cicero-goals"\]/);
     assert.match(config, /enabled = true/);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -275,8 +542,9 @@ test("plugin install output points to Goal Prep and optional extensions", () => 
     const install = runGoalMaker(["plugin", "install", "--codex-home", codexHome], { env });
     assert.equal(install.status, 0, install.stderr || install.stdout);
     assert.match(install.stdout, /\$goal-prep/);
-    assert.match(install.stdout, /npx goalbuddy extend/);
-    assert.match(install.stdout, /npx goalbuddy extend install --all/);
+    assert.match(install.stdout, /cicero-goals/);
+    assert.match(install.stdout, /npx cicero-goals extend/);
+    assert.match(install.stdout, /npx cicero-goals extend install --all/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -297,10 +565,10 @@ test("default command installs the native Codex plugin", () => {
 
     const report = JSON.parse(install.stdout);
     assert.equal(report.installed, true);
-    assert.equal(report.plugin, "goalbuddy@goalbuddy");
+    assert.equal(report.plugin, "cicero-goals@cicero-goals");
 
     const config = readFileSync(join(codexHome, "config.toml"), "utf8");
-    assert.match(config, /\[plugins\."goalbuddy@goalbuddy"\]/);
+    assert.match(config, /\[plugins\."cicero-goals@cicero-goals"\]/);
     assert.match(config, /enabled = true/);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -346,8 +614,8 @@ test("extend human output shows extension names, descriptions, and next commands
     assert.doesNotMatch(list.stdout, /state: available \| configured: no/);
     assert.doesNotMatch(list.stdout, /safe by default: no \| requires approval: yes/);
     assert.doesNotMatch(list.stdout, /missing env: GITHUB_TOKEN/);
-    assert.match(list.stdout, /npx goalbuddy extend install --all/);
-    assert.match(list.stdout, /npx goalbuddy extend publish-github-projects/);
+    assert.match(list.stdout, /npx cicero-goals extend install --all/);
+    assert.match(list.stdout, /npx cicero-goals extend publish-github-projects/);
     assert.doesNotMatch(list.stdout, /publish-github-projects\tpublish/);
 
     const details = runGoalMaker(["extend", "publish-github-projects", "--catalog-url", catalogPath, "--codex-home", codexHome]);
@@ -368,8 +636,8 @@ test("extend human output shows extension names, descriptions, and next commands
     assert.match(details.stdout, /Supports:/);
     assert.match(details.stdout, /Local use prompt:/);
     assert.match(details.stdout, /Run the bundled sync script\. Do not use Computer Use\./);
-    assert.match(details.stdout, /npx goalbuddy extend install publish-github-projects/);
-    assert.match(details.stdout, /npx goalbuddy extend install publish-github-projects --dry-run/);
+    assert.match(details.stdout, /npx cicero-goals extend install publish-github-projects/);
+    assert.match(details.stdout, /npx cicero-goals extend install publish-github-projects --dry-run/);
     assert.doesNotMatch(details.stdout, /files:/);
 
     const missing = runGoalMaker(["extend", "missing-extension", "--catalog-url", catalogPath, "--codex-home", codexHome]);
@@ -377,7 +645,7 @@ test("extend human output shows extension names, descriptions, and next commands
     assert.match(missing.stderr, /Extension not found: missing-extension/);
     assert.match(missing.stderr, /Available extensions:/);
     assert.match(missing.stderr, /publish-github-projects/);
-    assert.match(missing.stderr, /npx goalbuddy extend/);
+    assert.match(missing.stderr, /npx cicero-goals extend/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -433,7 +701,7 @@ test("extend installs into the plugin skill after default plugin install", () =>
 
     const report = JSON.parse(installExtensions.stdout);
     assert.equal(report.installed, true);
-    assert.match(report.extensions[0].target, new RegExp(`plugins[\\\\/]cache[\\\\/]goalbuddy[\\\\/]goalbuddy[\\\\/][^\\\\/]+[\\\\/]skills[\\\\/]goalbuddy[\\\\/]extend[\\\\/]publish-github-projects$`));
+    assert.match(report.extensions[0].target, new RegExp(`plugins[\\\\/]cache[\\\\/]cicero-goals[\\\\/]cicero-goals[\\\\/][^\\\\/]+[\\\\/]skills[\\\\/]goalbuddy[\\\\/]extend[\\\\/]publish-github-projects$`));
 
     const details = runGoalMaker(["extend", "publish-github-projects", "--catalog-url", catalogPath, "--codex-home", codexHome, "--json"], { env });
     assert.equal(details.status, 0, details.stderr || details.stdout);
@@ -453,10 +721,11 @@ test("install reports extension discovery in json mode", () => {
 
     const report = JSON.parse(result.stdout);
     assert.equal(report.command, "install");
-    assert.equal(report.package.name, "goalbuddy");
+    assert.equal(report.package.name, "cicero-goals");
     assert.equal(report.skill.status, "installed");
-    assert.match(report.skill.path, pathSuffixPattern("skills", "goalbuddy"));
-    assert.match(report.skill.compatibility_path, pathSuffixPattern("skills", "goal-maker"));
+    assert.match(report.skill.path, pathSuffixPattern("skills", "cicero-goals"));
+    assert.match(report.skill.compatibility_path, pathSuffixPattern("skills", "goalbuddy"));
+    assert.match(report.skill.legacy_compatibility_path, pathSuffixPattern("skills", "goal-maker"));
     assert.equal(report.extensions.available_count, 1);
     assert.equal(report.extensions.available[0].id, "publish-github-projects");
     assert.equal(report.extensions.recommended.length, 0);
@@ -476,22 +745,35 @@ test("legacy goal-maker invocation prints rebrand notice only for human output",
 
     const human = runGoalMaker(["--help"], { env });
     assert.equal(human.status, 0, human.stderr || human.stdout);
-    assert.match(human.stdout, /Codex GoalBuddy/);
-    assert.match(human.stdout, /goalbuddy install/);
-    assert.match(human.stderr, /goal-maker has been rebranded to goalbuddy/);
-    assert.match(human.stderr, /Use: npx goalbuddy/);
+    assert.match(human.stdout, /Codex Cicero Goals/);
+    assert.match(human.stdout, /cicero-goals install/);
+    assert.match(human.stderr, /goal-maker has been rebranded to cicero-goals/);
+    assert.match(human.stderr, /Use: npx cicero-goals/);
 
     const json = runGoalMaker(["install", "--codex-home", codexHome, "--catalog-url", writeCatalog(root), "--json"], { env });
     assert.equal(json.status, 0, json.stderr || json.stdout);
     assert.equal(json.stderr, "");
     const report = JSON.parse(json.stdout);
-    assert.equal(report.package.name, "goalbuddy");
+    assert.equal(report.package.name, "cicero-goals");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("install migrates legacy skill extensions and metadata to GoalBuddy paths", () => {
+test("cicero-goals invocation uses alias-aware help output without rebrand notice", () => {
+  const env = {
+    ...process.env,
+    GOALBUDDY_INVOKED_AS: "cicero-goals",
+  };
+
+  const help = runGoalMaker(["--help"], { env });
+  assert.equal(help.status, 0, help.stderr || help.stdout);
+  assert.match(help.stdout, /cicero-goals current/);
+  assert.match(help.stdout, /cicero-goals begin <title>/);
+  assert.doesNotMatch(help.stderr, /rebranded/i);
+});
+
+test("install migrates legacy skill extensions and metadata to Cicero Goals paths", () => {
   const root = mkdtempSync(join(tmpdir(), "goal-maker-cli-test-"));
   try {
     const catalogPath = writeCatalog(root);
@@ -516,8 +798,9 @@ test("install migrates legacy skill extensions and metadata to GoalBuddy paths",
     const doctorReport = JSON.parse(doctor.stdout);
     assert.equal(doctorReport.skill_installed, true);
     assert.equal(doctorReport.compatibility_skill_installed, true);
-    assert.match(doctorReport.skill_path, pathSuffixPattern("skills", "goalbuddy", "SKILL.md"));
-    assert.match(doctorReport.compatibility_skill_path, pathSuffixPattern("skills", "goal-maker", "SKILL.md"));
+    assert.match(doctorReport.skill_path, pathSuffixPattern("skills", "cicero-goals", "SKILL.md"));
+    assert.match(doctorReport.compatibility_skill_path, pathSuffixPattern("skills", "goalbuddy", "SKILL.md"));
+    assert.match(doctorReport.legacy_compatibility_skill_path, pathSuffixPattern("skills", "goal-maker", "SKILL.md"));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

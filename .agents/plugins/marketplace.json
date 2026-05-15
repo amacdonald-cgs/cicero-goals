@@ -1,11 +1,11 @@
 {
-  "name": "goalbuddy",
+  "name": "cicero-goals",
   "interface": {
-    "displayName": "GoalBuddy"
+    "displayName": "Cicero Goals"
   },
   "plugins": [
     {
-      "name": "goalbuddy",
+      "name": "cicero-goals",
       "source": {
         "source": "local",
         "path": "./plugins/goalbuddy"
